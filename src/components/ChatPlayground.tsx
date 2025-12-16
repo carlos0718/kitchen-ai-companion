@@ -1,8 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useChat } from '@/hooks/useChat';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useUsage } from '@/hooks/useUsage';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ConversationSidebar } from './ConversationSidebar';
+import { SubscriptionModal } from './SubscriptionModal';
+import { UsageBadge } from './UsageBadge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,11 +26,35 @@ const SUGGESTIONS = [
 
 export function ChatPlayground({ userId }: ChatPlaygroundProps) {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [showSubscription, setShowSubscription] = useState(false);
   const { messages, isLoading, error, sendMessage, loadMessages, clearMessages } = useChat({
     conversationId: currentConversationId || undefined,
   });
+  const { plan, subscribed, createCheckout, openCustomerPortal, checkSubscription } = useSubscription();
+  const { remaining, dailyLimit, canQuery, incrementUsage, checkUsage } = useUsage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Check for success/canceled URL params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      toast({
+        title: '¡Suscripción exitosa!',
+        description: 'Ahora tienes acceso a consultas ilimitadas',
+      });
+      checkSubscription();
+      window.history.replaceState({}, '', '/');
+    }
+    if (params.get('canceled') === 'true') {
+      toast({
+        title: 'Suscripción cancelada',
+        description: 'Puedes intentarlo de nuevo cuando quieras',
+        variant: 'destructive',
+      });
+      window.history.replaceState({}, '', '/');
+    }
+  }, [toast, checkSubscription]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -60,6 +88,17 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
   };
 
   const handleSendMessage = async (input: string) => {
+    // Check usage limit for free users
+    if (!subscribed && !canQuery) {
+      toast({
+        title: 'Límite alcanzado',
+        description: 'Has alcanzado el límite de consultas diarias. Suscríbete para consultas ilimitadas.',
+        variant: 'destructive',
+      });
+      setShowSubscription(true);
+      return;
+    }
+
     let convId = currentConversationId;
     
     if (!convId) {
@@ -75,6 +114,11 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
         .from('conversations')
         .update({ title })
         .eq('id', convId);
+    }
+
+    // Increment usage for free users
+    if (!subscribed) {
+      await incrementUsage();
     }
 
     sendMessage(input);
@@ -115,9 +159,17 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
               <p className="text-xs text-muted-foreground">Tu asistente de cocina casera</p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={handleSignOut}>
-            <LogOut className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <UsageBadge
+              remaining={remaining}
+              dailyLimit={dailyLimit}
+              isPremium={subscribed}
+              onClick={() => setShowSubscription(true)}
+            />
+            <Button variant="ghost" size="icon" onClick={handleSignOut}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
         </header>
 
         {/* Messages */}
@@ -174,6 +226,14 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
         {/* Input */}
         <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
       </div>
+
+      <SubscriptionModal
+        open={showSubscription}
+        onOpenChange={setShowSubscription}
+        currentPlan={plan}
+        onSubscribe={createCheckout}
+        onManage={openCustomerPortal}
+      />
     </div>
   );
 }
