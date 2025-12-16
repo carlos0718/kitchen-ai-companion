@@ -2,3 +2,18 @@ project_id = "lngunkhtkunkghtvmpfv"
 
 [functions.chat-cocina]
 verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.customer-portal]
+verify_jwt = false
+
+[functions.check-usage]
+verify_jwt = false
+
+[functions.increment-usage]
+verify_jwt = false
