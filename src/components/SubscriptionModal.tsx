@@ -20,7 +20,7 @@ const PLANS = [
     name: 'Gratis',
     price: '$0',
     period: '',
-    features: ['10 consultas por día', 'Recetas básicas', 'Historial limitado'],
+    features: ['15 consultas por semana', 'Recetas básicas', 'Historial limitado'],
     icon: Sparkles,
   },
   {
@@ -39,6 +39,7 @@ const PLANS = [
     period: '/mes',
     features: ['Consultas ilimitadas', 'Recetas premium', 'Historial completo', 'Soporte prioritario', 'Ahorra 25%'],
     icon: Crown,
+    badge: 'Pro',
   },
 ];
 
@@ -99,13 +100,18 @@ export function SubscriptionModal({
             const isPaid = plan.id !== 'free';
 
             return (
-              <Card 
-                key={plan.id} 
+              <Card
+                key={plan.id}
                 className={`relative ${plan.popular ? 'border-primary shadow-lg' : ''} ${isCurrent ? 'bg-accent/50' : ''}`}
               >
                 {plan.popular && (
                   <Badge className="absolute -top-2 left-1/2 -translate-x-1/2">
                     Popular
+                  </Badge>
+                )}
+                {'badge' in plan && plan.badge && !plan.popular && (
+                  <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-blue-600">
+                    {plan.badge}
                   </Badge>
                 )}
                 {isCurrent && (

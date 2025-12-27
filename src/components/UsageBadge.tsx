@@ -3,12 +3,12 @@ import { Zap, Crown } from 'lucide-react';
 
 interface UsageBadgeProps {
   remaining: number;
-  dailyLimit: number;
+  weeklyLimit: number;
   isPremium: boolean;
   onClick?: () => void;
 }
 
-export function UsageBadge({ remaining, dailyLimit, isPremium, onClick }: UsageBadgeProps) {
+export function UsageBadge({ remaining, weeklyLimit, isPremium, onClick }: UsageBadgeProps) {
   if (isPremium) {
     return (
       <Badge 
@@ -32,7 +32,7 @@ export function UsageBadge({ remaining, dailyLimit, isPremium, onClick }: UsageB
       onClick={onClick}
     >
       <Zap className="h-3 w-3" />
-      {remaining}/{dailyLimit} consultas
+      {remaining}/{weeklyLimit} semanales
     </Badge>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChefHat, Loader2 } from 'lucide-react';
 import { useProfile } from '@/hooks/useProfile';
+import { cn } from '@/lib/utils';
 
 interface OnboardingWizardProps {
   user: User;
@@ -18,8 +19,16 @@ interface OnboardingWizardProps {
 
 type FormData = {
   name: string;
+  age: number | null;
+  height: number | null;
+  weight: number | null;
+  gender: string;
+  bmi: number | null;
   dietary_restrictions: string[];
   allergies: string[];
+  diet_type: string;
+  snack_preference: string;
+  flexible_mode: boolean;
   daily_calorie_goal: number | null;
   protein_goal: number | null;
   carbs_goal: number | null;
@@ -40,6 +49,45 @@ const DIETARY_RESTRICTIONS = [
   { id: 'sin_azúcar', label: 'Sin azúcar' },
 ];
 
+const DIET_TYPES = [
+  {
+    id: 'casera_normal',
+    label: 'Comida Casera Normal',
+    description: 'Comida familiar equilibrada sin restricciones especiales'
+  },
+  {
+    id: 'keto',
+    label: 'Dieta Keto',
+    description: 'Baja en carbohidratos, alta en grasas saludables (70% grasa, 20% proteína, 10% carbos)'
+  },
+  {
+    id: 'paleo',
+    label: 'Dieta Paleo',
+    description: 'Basada en alimentos no procesados (30% proteína, 35% carbos, 35% grasa)'
+  },
+  {
+    id: 'vegetariano',
+    label: 'Vegetariana',
+    description: 'Sin carne ni pescado, incluye lácteos y huevos'
+  },
+  {
+    id: 'vegano',
+    label: 'Vegana',
+    description: 'Basada en plantas, sin productos de origen animal'
+  },
+  {
+    id: 'deportista',
+    label: 'Deportista/Alta Proteína',
+    description: 'Optimizada para rendimiento físico (30% proteína, 45% carbos, 25% grasa)'
+  },
+];
+
+const SNACK_PREFERENCES = [
+  { id: '3meals', label: '3 comidas (Desayuno, Almuerzo, Cena)' },
+  { id: '4meals', label: '4 comidas (+ Snack matutino)' },
+  { id: '5meals', label: '5 comidas (+ 2 Snacks)' },
+];
+
 const COMMON_ALLERGIES = [
   { id: 'nueces', label: 'Nueces' },
   { id: 'maní', label: 'Maní' },
@@ -52,18 +100,30 @@ const COMMON_ALLERGIES = [
 const CUISINE_TYPES = [
   { id: 'mexicana', label: 'Mexicana' },
   { id: 'italiana', label: 'Italiana' },
-  { id: 'asiática', label: 'Asiática' },
-  { id: 'mediterránea', label: 'Mediterránea' },
-  { id: 'argentina', label: 'Argentina' },
-  { id: 'española', label: 'Española' },
-  { id: 'india', label: 'India' },
+  { id: 'peruana', label: 'Peruana' },
+  { id: 'nikkei', label: 'Nikkei (Fusión Peruano-Japonesa)' },
   { id: 'japonesa', label: 'Japonesa' },
+  { id: 'china', label: 'China' },
+  { id: 'tailandesa', label: 'Tailandesa' },
+  { id: 'vietnamita', label: 'Vietnamita' },
+  { id: 'coreana', label: 'Coreana' },
+  { id: 'india', label: 'India' },
+  { id: 'mediterránea', label: 'Mediterránea' },
+  { id: 'española', label: 'Española' },
+  { id: 'francesa', label: 'Francesa' },
+  { id: 'argentina', label: 'Argentina' },
+  { id: 'brasileña', label: 'Brasileña' },
+  { id: 'colombiana', label: 'Colombiana' },
+  { id: 'venezolana', label: 'Venezolana' },
+  { id: 'árabe', label: 'Árabe' },
+  { id: 'fusión', label: 'Fusión / Moderna' },
 ];
 
 export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
+  const totalSteps = 7;
   const { createProfile, saving } = useProfile(user.id);
+  const [customCuisine, setCustomCuisine] = useState('');
 
   const {
     register,
@@ -74,8 +134,16 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
   } = useForm<FormData>({
     defaultValues: {
       name: '',
+      age: null,
+      height: null,
+      weight: null,
+      gender: '',
+      bmi: null,
       dietary_restrictions: [],
       allergies: [],
+      diet_type: 'casera_normal',
+      snack_preference: '3meals',
+      flexible_mode: true,
       daily_calorie_goal: null,
       protein_goal: null,
       carbs_goal: null,
@@ -90,6 +158,33 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
   const dietaryRestrictions = watch('dietary_restrictions');
   const allergies = watch('allergies');
   const cuisinePreferences = watch('cuisine_preferences');
+  const height = watch('height');
+  const weight = watch('weight');
+  const bmi = watch('bmi');
+
+  // Función para calcular el IMC
+  const calculateBMI = (heightInCm: number | null, weightInKg: number | null): number | null => {
+    if (!heightInCm || !weightInKg || heightInCm <= 0 || weightInKg <= 0) return null;
+    const heightInMeters = heightInCm / 100;
+    return Number((weightInKg / (heightInMeters * heightInMeters)).toFixed(1));
+  };
+
+  // Función para obtener categoría del IMC
+  const getBMICategory = (bmi: number | null): { category: string; color: string } => {
+    if (!bmi) return { category: '', color: '' };
+    if (bmi < 18.5) return { category: 'Bajo peso', color: 'text-blue-600' };
+    if (bmi < 25) return { category: 'Peso normal', color: 'text-green-600' };
+    if (bmi < 30) return { category: 'Sobrepeso', color: 'text-yellow-600' };
+    return { category: 'Obesidad', color: 'text-red-600' };
+  };
+
+  // Efecto para calcular IMC automáticamente
+  useEffect(() => {
+    const calculatedBMI = calculateBMI(height, weight);
+    if (calculatedBMI !== null && calculatedBMI !== bmi) {
+      setValue('bmi', calculatedBMI);
+    }
+  }, [height, weight, bmi, setValue]);
 
   const toggleArrayValue = (field: 'dietary_restrictions' | 'allergies' | 'cuisine_preferences', value: string) => {
     const currentValues = watch(field);
@@ -112,13 +207,15 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
     }
   };
 
-  const nextStep = () => {
+  const nextStep = (e?: React.MouseEvent) => {
+    e?.preventDefault();
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     }
   };
 
-  const prevStep = () => {
+  const prevStep = (e?: React.MouseEvent) => {
+    e?.preventDefault();
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
     }
@@ -126,7 +223,11 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
 
   return (
     <Dialog open={true}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        hideOverlay={true}
+        className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
             <ChefHat className="h-6 w-6 text-primary-foreground" />
@@ -138,7 +239,17 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
           <Progress value={(currentStep / totalSteps) * 100} className="mt-4" />
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-6">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          onKeyDown={(e) => {
+            // Prevenir submit con Enter si no estamos en el último paso
+            if (e.key === 'Enter' && currentStep < totalSteps) {
+              e.preventDefault();
+              nextStep();
+            }
+          }}
+          className="space-y-6 mt-6"
+        >
           {/* Step 1: Bienvenida + Nombre */}
           {currentStep === 1 && (
             <div className="space-y-4">
@@ -159,8 +270,87 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
             </div>
           )}
 
-          {/* Step 2: Restricciones Dietéticas y Alergias */}
+          {/* Step 2: Datos Biométricos */}
           {currentStep === 2 && (
+            <div className="space-y-6">
+              <div className="text-center space-y-2">
+                <h3 className="font-semibold text-lg">Datos Personales</h3>
+                <p className="text-sm text-muted-foreground">
+                  Esto nos ayuda a calcular tus necesidades nutricionales
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age">Edad (años)</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    {...register('age', { valueAsNumber: true })}
+                    placeholder="25"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Género</Label>
+                  <Select
+                    value={watch('gender') || ''}
+                    onValueChange={(value) => setValue('gender', value)}
+                  >
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Seleccionar" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Masculino</SelectItem>
+                      <SelectItem value="female">Femenino</SelectItem>
+                      <SelectItem value="other">Otro</SelectItem>
+                      <SelectItem value="prefer_not_to_say">Prefiero no decir</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="height">Altura (cm)</Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    step="0.1"
+                    {...register('height', { valueAsNumber: true })}
+                    placeholder="170"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="weight">Peso (kg)</Label>
+                  <Input
+                    id="weight"
+                    type="number"
+                    step="0.1"
+                    {...register('weight', { valueAsNumber: true })}
+                    placeholder="70"
+                  />
+                </div>
+              </div>
+
+              {bmi && (
+                <div className="mt-4 p-4 bg-accent rounded-lg text-center space-y-2">
+                  <div className="text-sm text-muted-foreground">Tu IMC (Índice de Masa Corporal)</div>
+                  <div className="text-3xl font-bold">{bmi}</div>
+                  <div className={`text-sm font-medium ${getBMICategory(bmi).color}`}>
+                    {getBMICategory(bmi).category}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    Esto nos ayuda a personalizar tus recomendaciones nutricionales
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3: Restricciones Dietéticas y Alergias */}
+          {currentStep === 3 && (
             <div className="space-y-6">
               <div>
                 <h3 className="font-semibold text-lg mb-4">Restricciones Dietéticas</h3>
@@ -206,8 +396,87 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
             </div>
           )}
 
-          {/* Step 3: Objetivos Nutricionales */}
-          {currentStep === 3 && (
+          {/* Step 4: Tipo de Dieta */}
+          {currentStep === 4 && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium mb-2">¿Qué tipo de plan alimenticio prefieres?</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Selecciona el enfoque que mejor se adapte a tus necesidades.{' '}
+                  <a href="/diet-guide" target="_blank" className="text-primary hover:underline">
+                    Ver guía de dietas
+                  </a>
+                </p>
+                <div className="grid gap-3">
+                  {DIET_TYPES.map((diet) => (
+                    <label
+                      key={diet.id}
+                      className={cn(
+                        'flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition-all',
+                        watch('diet_type') === diet.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        value={diet.id}
+                        {...register('diet_type')}
+                        className="mt-1"
+                      />
+                      <div>
+                        <div className="font-medium">{diet.label}</div>
+                        <div className="text-sm text-muted-foreground">{diet.description}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-medium mb-2">¿Cuántas comidas al día prefieres?</h3>
+                <div className="grid gap-3">
+                  {SNACK_PREFERENCES.map((pref) => (
+                    <label
+                      key={pref.id}
+                      className={cn(
+                        'flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all',
+                        watch('snack_preference') === pref.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        value={pref.id}
+                        {...register('snack_preference')}
+                      />
+                      <span>{pref.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-accent rounded-lg">
+                <input
+                  type="checkbox"
+                  id="flexible_mode"
+                  {...register('flexible_mode')}
+                  className="mt-1"
+                />
+                <label htmlFor="flexible_mode" className="text-sm">
+                  <span className="font-medium">Modo flexible</span>
+                  <p className="text-muted-foreground mt-1">
+                    Permite ingredientes similares si los exactos no están disponibles.
+                    Desactiva esta opción si necesitas seguir las restricciones de manera estricta.
+                  </p>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Objetivos Nutricionales */}
+          {currentStep === 5 && (
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold text-lg mb-2">Objetivos Nutricionales</h3>
@@ -256,8 +525,8 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
             </div>
           )}
 
-          {/* Step 4: Información del Hogar */}
-          {currentStep === 4 && (
+          {/* Step 6: Información del Hogar */}
+          {currentStep === 6 && (
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold text-lg mb-2">Información del Hogar</h3>
@@ -307,8 +576,8 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
             </div>
           )}
 
-          {/* Step 5: Preferencias de Cocina */}
-          {currentStep === 5 && (
+          {/* Step 7: Preferencias de Cocina */}
+          {currentStep === 7 && (
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold text-lg mb-2">Preferencias de Cocina</h3>
@@ -316,7 +585,7 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                   ¿Qué tipos de cocina te gustan? (selecciona varias):
                 </p>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
                 {CUISINE_TYPES.map((item) => (
                   <div key={item.id} className="flex items-center space-x-2">
                     <Checkbox
@@ -329,6 +598,62 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                     </Label>
                   </div>
                 ))}
+              </div>
+
+              <div className="pt-4 border-t space-y-2">
+                <Label htmlFor="custom_cuisine">¿Otro tipo de cocina?</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="custom_cuisine"
+                    value={customCuisine}
+                    onChange={(e) => setCustomCuisine(e.target.value)}
+                    placeholder="Ej: Turca, Griega, Marroquí..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (customCuisine.trim()) {
+                        const cuisineId = customCuisine.toLowerCase().trim();
+                        if (!cuisinePreferences.includes(cuisineId)) {
+                          setValue('cuisine_preferences', [...cuisinePreferences, cuisineId]);
+                          setCustomCuisine('');
+                        }
+                      }
+                    }}
+                    disabled={!customCuisine.trim()}
+                  >
+                    Agregar
+                  </Button>
+                </div>
+                {cuisinePreferences.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {cuisinePreferences
+                      .filter((pref) => !CUISINE_TYPES.find((t) => t.id === pref))
+                      .map((custom) => (
+                        <div
+                          key={custom}
+                          className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm flex items-center gap-2"
+                        >
+                          <span className="capitalize">{custom}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleArrayValue('cuisine_preferences', custom)}
+                            className="hover:text-destructive"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

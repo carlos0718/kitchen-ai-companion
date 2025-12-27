@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthForm } from '@/components/AuthForm';
-import { ChatPlayground } from '@/components/ChatPlayground';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 
 const Index = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -50,7 +51,8 @@ const Index = () => {
           // Profile exists but onboarding not completed
           setShowOnboarding(true);
         } else {
-          setShowOnboarding(false);
+          // Profile exists and onboarding completed - redirect to chat
+          navigate('/chat');
         }
       } catch (error) {
         console.error('Error checking profile:', error);
@@ -60,10 +62,11 @@ const Index = () => {
     };
 
     checkUserProfile();
-  }, [user]);
+  }, [user, navigate]);
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
+    navigate('/chat');
   };
 
   if (loading || checkingProfile) {
@@ -79,10 +82,15 @@ const Index = () => {
   }
 
   if (showOnboarding) {
-    return <OnboardingWizard user={user} onComplete={handleOnboardingComplete} />;
+    return (
+      <div className="min-h-screen bg-background">
+        <OnboardingWizard user={user} onComplete={handleOnboardingComplete} />
+      </div>
+    );
   }
 
-  return <ChatPlayground userId={user.id} />;
+  // If user has completed onboarding, they'll be redirected via useEffect
+  return null;
 };
 
 export default Index;

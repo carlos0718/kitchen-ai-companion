@@ -6,7 +6,16 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const FREE_DAILY_LIMIT = 10;
+const FREE_WEEKLY_LIMIT = 15;
+
+// Get start of week (Monday)
+function getWeekStart(date: Date): string {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+  d.setDate(diff);
+  return d.toISOString().split('T')[0];
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -25,29 +34,30 @@ serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    
+
     if (userError) throw new Error(`Auth error: ${userError.message}`);
     const user = userData.user;
     if (!user) throw new Error("User not authenticated");
 
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const weekStart = getWeekStart(today);
 
-    // Get today's usage
+    // Get this week's usage (sum all queries from Monday to today)
     const { data: usageData, error: usageError } = await supabaseClient
       .from('usage_tracking')
       .select('query_count')
       .eq('user_id', user.id)
-      .eq('date', today)
-      .single();
+      .gte('date', weekStart)
+      .lte('date', today.toISOString().split('T')[0]);
 
-    const currentCount = usageData?.query_count || 0;
-    const remaining = Math.max(0, FREE_DAILY_LIMIT - currentCount);
+    const currentCount = usageData?.reduce((sum, record) => sum + record.query_count, 0) || 0;
+    const remaining = Math.max(0, FREE_WEEKLY_LIMIT - currentCount);
 
-    console.log("[CHECK-USAGE] User:", user.id, "Count:", currentCount, "Remaining:", remaining);
+    console.log("[CHECK-USAGE] User:", user.id, "Week start:", weekStart, "Count:", currentCount, "Remaining:", remaining);
 
     return new Response(JSON.stringify({
       current_count: currentCount,
-      daily_limit: FREE_DAILY_LIMIT,
+      weekly_limit: FREE_WEEKLY_LIMIT,
       remaining,
       can_query: remaining > 0,
     }), {

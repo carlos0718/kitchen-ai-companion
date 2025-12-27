@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface UsageState {
   currentCount: number;
-  dailyLimit: number;
+  weeklyLimit: number;
   remaining: number;
   canQuery: boolean;
   loading: boolean;
@@ -12,8 +12,8 @@ export interface UsageState {
 export function useUsage() {
   const [state, setState] = useState<UsageState>({
     currentCount: 0,
-    dailyLimit: 10,
-    remaining: 10,
+    weeklyLimit: 15,
+    remaining: 15,
     canQuery: true,
     loading: true,
   });
@@ -27,7 +27,7 @@ export function useUsage() {
       }
 
       const response = await supabase.functions.invoke('check-usage');
-      
+
       if (response.error) {
         console.error('Error checking usage:', response.error);
         setState(prev => ({ ...prev, loading: false }));
@@ -36,7 +36,7 @@ export function useUsage() {
 
       setState({
         currentCount: response.data.current_count,
-        dailyLimit: response.data.daily_limit,
+        weeklyLimit: response.data.weekly_limit,
         remaining: response.data.remaining,
         canQuery: response.data.can_query,
         loading: false,

@@ -7,21 +7,22 @@ import { ChatInput } from './ChatInput';
 import { ConversationSidebar } from './ConversationSidebar';
 import { SubscriptionModal } from './SubscriptionModal';
 import { UsageBadge } from './UsageBadge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { ChefHat, LogOut, Sparkles } from 'lucide-react';
+import { ChefHat, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import './ChatPlayground.css';
 
 interface ChatPlaygroundProps {
   userId: string;
 }
 
 const SUGGESTIONS = [
-  '🥚 Tengo huevos, arroz y verduras',
-  '🍗 Quiero hacer algo con pollo',
-  '🥗 Una ensalada fácil y nutritiva',
-  '🍝 Pasta rápida para la cena',
+  '💪 Quiero ganar masa muscular',
+  '🥗 Busco recetas vegetarianas saludables',
+  '⚖️ Necesito bajar de peso',
+  '🏃 Dieta alta en proteínas',
+  '🍝 Solo quiero algo rápido hoy',
 ];
 
 export function ChatPlayground({ userId }: ChatPlaygroundProps) {
@@ -29,9 +30,10 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
   const [showSubscription, setShowSubscription] = useState(false);
   const { messages, isLoading, error, sendMessage, loadMessages, clearMessages } = useChat({
     conversationId: currentConversationId || undefined,
+    userId: userId,
   });
   const { plan, subscribed, createCheckout, openCustomerPortal, checkSubscription } = useSubscription();
-  const { remaining, dailyLimit, canQuery, incrementUsage, checkUsage } = useUsage();
+  const { remaining, weeklyLimit, canQuery, incrementUsage, checkUsage } = useUsage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -134,12 +136,8 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
     clearMessages();
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
-
   return (
-    <div className="flex h-screen bg-background">
+    <div className="chat-playground-container">
       <ConversationSidebar
         userId={userId}
         currentConversationId={currentConversationId}
@@ -147,9 +145,9 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
         onNewConversation={handleNewConversation}
       />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="chat-content-area">
         {/* Header */}
-        <header className="flex items-center justify-between p-4 border-b border-border bg-card">
+        <header className="chat-header flex items-center justify-between p-4 border-b border-border bg-card">
           <div className="flex items-center gap-3 ml-12 md:ml-0">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
               <ChefHat className="h-5 w-5 text-primary-foreground" />
@@ -159,32 +157,27 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
               <p className="text-xs text-muted-foreground">Tu asistente de cocina casera</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <UsageBadge
-              remaining={remaining}
-              dailyLimit={dailyLimit}
-              isPremium={subscribed}
-              onClick={() => setShowSubscription(true)}
-            />
-            <Button variant="ghost" size="icon" onClick={handleSignOut}>
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
+          <UsageBadge
+            remaining={remaining}
+            weeklyLimit={weeklyLimit}
+            isPremium={subscribed}
+            onClick={() => setShowSubscription(true)}
+          />
         </header>
 
         {/* Messages */}
-        <ScrollArea className="flex-1" ref={scrollRef}>
-          <div className="max-w-3xl mx-auto p-4 space-y-4">
+        <div className="chat-messages-area" ref={scrollRef}>
+          <div className="max-w-3xl mx-auto p-4 space-y-4 pb-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mb-6">
                   <Sparkles className="h-10 w-10 text-accent-foreground" />
                 </div>
                 <h2 className="text-2xl font-serif font-semibold mb-2">
-                  ¿Qué cocinamos hoy?
+                  ¡Bienvenido a Chef AI!
                 </h2>
                 <p className="text-muted-foreground mb-8 max-w-md">
-                  Cuéntame qué ingredientes tienes en casa y te sugeriré recetas deliciosas
+                  Cuéntame tu objetivo: ¿quieres seguir una dieta específica, ganar músculo, bajar de peso, o simplemente preparar algo rico?
                 </p>
                 <div className="flex flex-wrap gap-2 justify-center">
                   {SUGGESTIONS.map((suggestion) => (
@@ -221,10 +214,12 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Input */}
-        <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+        <div className="chat-input-area">
+          <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+        </div>
       </div>
 
       <SubscriptionModal

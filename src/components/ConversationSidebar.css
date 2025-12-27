@@ -1,0 +1,88 @@
+.conversation-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+}
+
+.conversation-item:hover {
+  background-color: hsl(var(--accent));
+}
+
+.conversation-item.active {
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  width: 270px;
+}
+
+.conversation-item-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
+.conversation-item-text-wrapper {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding-right: 4rem;
+  max-width: 100%;
+  margin-right: 15px;
+}
+
+.conversation-item-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  width: 100%;
+}
+
+.conversation-item-input {
+  width: 100%;
+  background: transparent;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  color: inherit;
+  outline: none;
+}
+
+.conversation-item-input:focus {
+  border-color: hsl(var(--primary));
+}
+
+.conversation-item.active .conversation-item-input {
+  border-color: hsl(var(--primary-foreground));
+  color: hsl(var(--primary-foreground));
+}
+
+.conversation-item-actions {
+  position: absolute;
+  right: 0.5rem;
+  display: flex;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.conversation-item:hover .conversation-item-actions {
+  opacity: 1;
+}
+
+.conversation-item-action-btn {
+  height: 1.5rem;
+  width: 1.5rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

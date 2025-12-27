@@ -9,17 +9,18 @@ export interface Message {
 
 interface UseChatOptions {
   conversationId?: string;
+  userId?: string;
   onMessageSaved?: () => void;
 }
 
-export function useChat({ conversationId, onMessageSaved }: UseChatOptions = {}) {
+export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptions = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const saveMessage = async (role: 'user' | 'assistant', content: string) => {
+  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string) => {
     if (!conversationId) return;
-    
+
     try {
       await supabase.from('messages').insert({
         conversation_id: conversationId,
@@ -30,7 +31,7 @@ export function useChat({ conversationId, onMessageSaved }: UseChatOptions = {})
     } catch (err) {
       console.error('Error saving message:', err);
     }
-  };
+  }, [conversationId, onMessageSaved]);
 
   const sendMessage = useCallback(async (input: string) => {
     if (!input.trim()) return;
@@ -72,9 +73,10 @@ export function useChat({ conversationId, onMessageSaved }: UseChatOptions = {})
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           messages: [{ role: 'user', content: input }],
           conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
+          user_id: userId,
         }),
       });
 
@@ -129,7 +131,7 @@ export function useChat({ conversationId, onMessageSaved }: UseChatOptions = {})
     } finally {
       setIsLoading(false);
     }
-  }, [messages, conversationId]);
+  }, [messages, userId, saveMessage]);
 
   const loadMessages = useCallback(async (convId: string) => {
     const { data, error } = await supabase
