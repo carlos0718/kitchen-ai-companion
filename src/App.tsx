@@ -8,6 +8,7 @@ import Profile from "./pages/Profile";
 import Chat from "./pages/Chat";
 import MealPlanner from "./pages/MealPlanner";
 import DietGuide from "./pages/DietGuide";
+import Help from "./pages/Help";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
@@ -33,7 +34,9 @@ const App = () => (
             path="/chat"
             element={
               <ProtectedRoute>
-                <Chat />
+                <AppLayout>
+                  <Chat />
+                </AppLayout>
               </ProtectedRoute>
             }
           />
@@ -63,6 +66,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <DietGuide />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/help"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Help />
                 </AppLayout>
               </ProtectedRoute>
             }

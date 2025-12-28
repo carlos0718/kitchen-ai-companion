@@ -76,17 +76,7 @@ export function MealCard({
   }
 
   return (
-    <Card className={`relative overflow-hidden hover:shadow-md transition-shadow ${isCompleted ? 'opacity-60' : ''}`}>
-      {/* Completed Badge */}
-      {isCompleted && (
-        <div className="absolute top-2 left-2 z-10">
-          <Badge variant="default" className="bg-green-600 gap-1">
-            <CheckCircle2 className="h-3 w-3" />
-            Completado
-          </Badge>
-        </div>
-      )}
-
+    <Card className={`relative overflow-hidden hover:shadow-sm transition-shadow ${isCompleted ? 'opacity-60' : ''}`}>
       {/* Remove Button */}
       {onRemove && (
         <Button
@@ -102,84 +92,27 @@ export function MealCard({
         </Button>
       )}
 
-      {/* Image */}
-      {recipe.image_url && !imageError ? (
-        <div className="relative h-32 overflow-hidden bg-muted">
-          <img
-            src={recipe.image_url}
-            alt={recipe.name}
-            className="w-full h-full object-cover"
-            onError={() => setImageError(true)}
-          />
-        </div>
-      ) : (
-        <div className="h-32 bg-gradient-to-br from-primary/5 to-primary/20 flex items-center justify-center">
-          <span className="text-5xl">🍽️</span>
-        </div>
-      )}
-
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-3 space-y-2.5">
         {/* Meal Type Badge */}
         <Badge variant="outline" className={MEAL_TYPE_COLORS[mealType]}>
           {MEAL_TYPE_LABELS[mealType]}
         </Badge>
 
-        {/* Recipe Name */}
-        <h3 className="font-semibold text-sm line-clamp-2">{recipe.name}</h3>
+        {/* Recipe Name - Truncated */}
+        <h3 className="font-medium text-sm line-clamp-2 pr-6">{recipe.name}</h3>
 
-        {/* Nutrition Summary */}
-        {recipe.calories && (
-          <div className="flex gap-3 text-xs text-muted-foreground">
-            <span className="font-medium">{recipe.calories} kcal</span>
-            {recipe.protein && <span>P: {recipe.protein}g</span>}
-            {recipe.carbs && <span>C: {recipe.carbs}g</span>}
-            {recipe.fat && <span>G: {recipe.fat}g</span>}
-          </div>
+        {/* Actions - Only View button */}
+        {onViewDetails && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-1"
+            onClick={onViewDetails}
+          >
+            <Eye className="h-3 w-3" />
+            Ver
+          </Button>
         )}
-
-        {/* Metadata */}
-        <div className="flex gap-2 text-xs text-muted-foreground">
-          {recipe.prep_time && <span>⏱️ {recipe.prep_time}min</span>}
-          {recipe.difficulty && (
-            <span className="capitalize">• {recipe.difficulty}</span>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-2 pt-2">
-          {onViewDetails && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1"
-              onClick={onViewDetails}
-            >
-              <Eye className="h-3 w-3" />
-              Ver
-            </Button>
-          )}
-          {onReplace && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="flex-1 gap-1"
-              onClick={onReplace}
-            >
-              <RefreshCw className="h-3 w-3" />
-              Reemplazar
-            </Button>
-          )}
-          {onToggleCompleted && (
-            <Button
-              variant={isCompleted ? 'outline' : 'default'}
-              size="sm"
-              className="flex-1"
-              onClick={() => onToggleCompleted(!isCompleted)}
-            >
-              {isCompleted ? 'Pendiente' : 'Completar'}
-            </Button>
-          )}
-        </div>
       </CardContent>
     </Card>
   );

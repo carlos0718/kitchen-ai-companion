@@ -1,5 +1,4 @@
-import { Navigation } from './Navigation';
-import { MobileSidebar } from './MobileSidebar';
+import { AppSidebar } from './AppSidebar';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -8,9 +7,8 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
-      <Navigation />
-      <MobileSidebar />
-      <main>
+      <AppSidebar />
+      <main className="md:ml-72">
         {children}
       </main>
     </div>

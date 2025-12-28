@@ -4,7 +4,6 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useUsage } from '@/hooks/useUsage';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
-import { ConversationSidebar } from './ConversationSidebar';
 import { SubscriptionModal } from './SubscriptionModal';
 import { UsageBadge } from './UsageBadge';
 import { Button } from '@/components/ui/button';
@@ -126,29 +125,12 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
     sendMessage(input);
   };
 
-  const handleSelectConversation = async (id: string) => {
-    setCurrentConversationId(id);
-    await loadMessages(id);
-  };
-
-  const handleNewConversation = () => {
-    setCurrentConversationId(null);
-    clearMessages();
-  };
-
   return (
     <div className="chat-playground-container">
-      <ConversationSidebar
-        userId={userId}
-        currentConversationId={currentConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewConversation={handleNewConversation}
-      />
-
       <div className="chat-content-area">
         {/* Header */}
         <header className="chat-header flex items-center justify-between p-4 border-b border-border bg-card">
-          <div className="flex items-center gap-3 ml-12 md:ml-0">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
               <ChefHat className="h-5 w-5 text-primary-foreground" />
             </div>

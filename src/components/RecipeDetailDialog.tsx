@@ -8,7 +8,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Clock, Users, TrendingUp } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Clock, Users, TrendingUp, RefreshCw, Send, X as XIcon } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import * as React from 'react';
 
 interface Recipe {
   id: string;
@@ -35,9 +38,30 @@ interface RecipeDetailDialogProps {
   recipe: Recipe | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  mealType?: 'breakfast' | 'mid_morning_snack' | 'lunch' | 'afternoon_snack' | 'dinner';
+  onReplace?: (preferences?: string) => void;
 }
 
-export function RecipeDetailDialog({ recipe, open, onOpenChange }: RecipeDetailDialogProps) {
+const MEAL_TYPE_LABELS = {
+  breakfast: 'Desayuno',
+  mid_morning_snack: 'Snack AM',
+  lunch: 'Almuerzo',
+  afternoon_snack: 'Merienda',
+  dinner: 'Cena',
+};
+
+const MEAL_TYPE_COLORS = {
+  breakfast: 'bg-orange-500/10 text-orange-700 border-orange-500/20',
+  mid_morning_snack: 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20',
+  lunch: 'bg-blue-500/10 text-blue-700 border-blue-500/20',
+  afternoon_snack: 'bg-green-500/10 text-green-700 border-green-500/20',
+  dinner: 'bg-purple-500/10 text-purple-700 border-purple-500/20',
+};
+
+export function RecipeDetailDialog({ recipe, open, onOpenChange, mealType, onReplace }: RecipeDetailDialogProps) {
+  const [showRegenerateInput, setShowRegenerateInput] = React.useState(false);
+  const [regeneratePreferences, setRegeneratePreferences] = React.useState('');
+
   if (!recipe) return null;
 
   const ingredients = Array.isArray(recipe.ingredients)
@@ -47,12 +71,21 @@ export function RecipeDetailDialog({ recipe, open, onOpenChange }: RecipeDetailD
     ? recipe.instructions
     : [];
 
+  const handleRegenerate = () => {
+    if (onReplace) {
+      onReplace(regeneratePreferences.trim() || undefined);
+      setShowRegenerateInput(false);
+      setRegeneratePreferences('');
+      onOpenChange(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] p-0">
         <ScrollArea className="max-h-[90vh]">
           {/* Header Image */}
-          {recipe.image_url && (
+          {recipe.image_url ? (
             <div className="relative h-64 w-full overflow-hidden">
               <img
                 src={recipe.image_url}
@@ -60,12 +93,22 @@ export function RecipeDetailDialog({ recipe, open, onOpenChange }: RecipeDetailD
                 className="w-full h-full object-cover"
               />
             </div>
+          ) : (
+            <div className="h-64 w-full bg-gradient-to-br from-primary/5 to-primary/20 flex items-center justify-center">
+              <span className="text-7xl">🍽️</span>
+            </div>
           )}
 
           <div className="p-6 space-y-6">
             {/* Title & Metadata */}
             <DialogHeader>
               <div className="flex flex-wrap gap-2 mb-3">
+                {/* Meal Type Badge - Highlighted */}
+                {mealType && (
+                  <Badge variant="outline" className={MEAL_TYPE_COLORS[mealType]}>
+                    {MEAL_TYPE_LABELS[mealType]}
+                  </Badge>
+                )}
                 {recipe.difficulty && (
                   <Badge variant="secondary" className="capitalize">
                     {recipe.difficulty}
@@ -80,11 +123,78 @@ export function RecipeDetailDialog({ recipe, open, onOpenChange }: RecipeDetailD
                   </Badge>
                 ))}
               </div>
-              <DialogTitle className="text-2xl">{recipe.name}</DialogTitle>
-              {recipe.description && (
-                <DialogDescription className="text-base">
-                  {recipe.description}
-                </DialogDescription>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <DialogTitle className="text-2xl">{recipe.name}</DialogTitle>
+                  {recipe.description && (
+                    <DialogDescription className="text-base mt-2">
+                      {recipe.description}
+                    </DialogDescription>
+                  )}
+                </div>
+                {onReplace && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setShowRegenerateInput(!showRegenerateInput)}
+                    className="gap-2 flex-shrink-0 bg-primary hover:bg-primary/90"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Regenerar
+                  </Button>
+                )}
+              </div>
+
+              {/* Regenerate Input */}
+              {showRegenerateInput && onReplace && (
+                <div className="mt-4 p-4 border rounded-lg bg-muted/50 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h4 className="font-medium text-sm">Personaliza tu nueva comida</h4>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Especifica qué quieres cambiar o qué tipo de dieta prefieres (opcional)
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6"
+                      onClick={() => {
+                        setShowRegenerateInput(false);
+                        setRegeneratePreferences('');
+                      }}
+                    >
+                      <XIcon className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <Textarea
+                    placeholder="Ej: Quiero algo más ligero, Sin gluten, Con más proteína, Vegano, etc."
+                    value={regeneratePreferences}
+                    onChange={(e) => setRegeneratePreferences(e.target.value)}
+                    className="min-h-[80px] text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowRegenerateInput(false);
+                        setRegeneratePreferences('');
+                      }}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleRegenerate}
+                      className="flex-1 gap-2"
+                    >
+                      <Send className="h-3 w-3" />
+                      Generar Nueva Comida
+                    </Button>
+                  </div>
+                </div>
               )}
             </DialogHeader>
 
