@@ -205,7 +205,7 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
   };
 
   // Replace meal with AI-generated alternative
-  const replaceMeal = async (mealItemId: string, mealType: string) => {
+  const replaceMeal = async (mealItemId: string, mealType: string, preferences?: string) => {
     if (!userId || !mealPlan) return;
 
     try {
@@ -228,16 +228,34 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
           mealType,
           dateToReplace: currentItem.date,
           itemIdToReplace: mealItemId,
+          userPreferences: preferences, // User's custom preferences for regeneration
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Check if it's a subscription error
+        if (error.message?.includes('subscription') || error.message?.includes('suscripción')) {
+          throw new Error('SUBSCRIPTION_REQUIRED');
+        }
+        throw error;
+      }
 
       toast.success('Comida reemplazada con éxito');
       await loadMealPlan(); // Reload the plan
     } catch (error: any) {
       console.error('Error replacing meal:', error);
-      toast.error('Error al reemplazar la comida');
+
+      // Handle specific subscription errors
+      if (error.message === 'SUBSCRIPTION_REQUIRED') {
+        toast.error('Necesitas una suscripción activa para reemplazar comidas');
+        throw error; // Re-throw for component to catch
+      } else if (error.message.startsWith('PERIOD_EXCEEDED:')) {
+        const message = error.message.replace('PERIOD_EXCEEDED: ', '');
+        toast.error(message);
+        throw error; // Re-throw for component to catch
+      } else {
+        toast.error('Error al reemplazar la comida');
+      }
     } finally {
       setGenerating(false);
     }
@@ -266,8 +284,26 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP error ${response.status}: ${errorText}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          const errorText = await response.text();
+          throw new Error(`HTTP error ${response.status}: ${errorText}`);
+        }
+
+        // Handle subscription-specific errors
+        if (errorData.error === 'subscription_required') {
+          throw new Error('SUBSCRIPTION_REQUIRED');
+        } else if (errorData.error === 'date_after_period' || errorData.error === 'date_before_period') {
+          throw new Error(`PERIOD_EXCEEDED: ${errorData.message}`);
+        } else if (errorData.error === 'date_in_past') {
+          throw new Error(`INVALID_DATE: ${errorData.message}`);
+        } else if (errorData.error === 'invalid_subscription') {
+          throw new Error(`INVALID_SUBSCRIPTION: ${errorData.message}`);
+        } else {
+          throw new Error(errorData.message || `HTTP error ${response.status}`);
+        }
       }
 
       const data = await response.json();
@@ -281,7 +317,24 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
       }
     } catch (error: any) {
       console.error('Error generating plan:', error);
-      toast.error(error.message || 'Error al generar plan semanal');
+
+      // Handle specific subscription errors
+      if (error.message === 'SUBSCRIPTION_REQUIRED') {
+        toast.error('Necesitas una suscripción para el planificador');
+        throw error; // Re-throw for component to catch
+      } else if (error.message.startsWith('PERIOD_EXCEEDED:')) {
+        const message = error.message.replace('PERIOD_EXCEEDED: ', '');
+        toast.error(message);
+        throw error; // Re-throw for component to catch
+      } else if (error.message.startsWith('INVALID_DATE:')) {
+        const message = error.message.replace('INVALID_DATE: ', '');
+        toast.error(message);
+      } else if (error.message.startsWith('INVALID_SUBSCRIPTION:')) {
+        const message = error.message.replace('INVALID_SUBSCRIPTION: ', '');
+        toast.error(message);
+      } else {
+        toast.error(error.message || 'Error al generar plan semanal');
+      }
     } finally {
       setGenerating(false);
     }
@@ -335,9 +388,27 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
       console.log('Edge function response status:', response.status);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Edge function error:', errorText);
-        throw new Error(`HTTP error ${response.status}: ${errorText}`);
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch {
+          const errorText = await response.text();
+          console.error('Edge function error:', errorText);
+          throw new Error(`HTTP error ${response.status}: ${errorText}`);
+        }
+
+        // Handle subscription-specific errors
+        if (errorData.error === 'subscription_required') {
+          throw new Error('SUBSCRIPTION_REQUIRED');
+        } else if (errorData.error === 'date_after_period' || errorData.error === 'date_before_period') {
+          throw new Error(`PERIOD_EXCEEDED: ${errorData.message}`);
+        } else if (errorData.error === 'date_in_past') {
+          throw new Error(`INVALID_DATE: ${errorData.message}`);
+        } else if (errorData.error === 'invalid_subscription') {
+          throw new Error(`INVALID_SUBSCRIPTION: ${errorData.message}`);
+        } else {
+          throw new Error(errorData.message || `HTTP error ${response.status}`);
+        }
       }
 
       const data = await response.json();
@@ -352,7 +423,24 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
       }
     } catch (error: any) {
       console.error('Error generating daily plan:', error);
-      toast.error(error.message || 'Error al generar plan diario');
+
+      // Handle specific subscription errors
+      if (error.message === 'SUBSCRIPTION_REQUIRED') {
+        toast.error('Necesitas una suscripción para el planificador');
+        throw error; // Re-throw for component to catch
+      } else if (error.message.startsWith('PERIOD_EXCEEDED:')) {
+        const message = error.message.replace('PERIOD_EXCEEDED: ', '');
+        toast.error(message);
+        throw error; // Re-throw for component to catch
+      } else if (error.message.startsWith('INVALID_DATE:')) {
+        const message = error.message.replace('INVALID_DATE: ', '');
+        toast.error(message);
+      } else if (error.message.startsWith('INVALID_SUBSCRIPTION:')) {
+        const message = error.message.replace('INVALID_SUBSCRIPTION: ', '');
+        toast.error(message);
+      } else {
+        toast.error(error.message || 'Error al generar plan diario');
+      }
     } finally {
       setGenerating(false);
     }

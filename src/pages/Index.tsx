@@ -4,6 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthForm } from '@/components/AuthForm';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { LandingHero } from '@/components/landing/LandingHero';
+import { FeaturesSection } from '@/components/landing/FeaturesSection';
+import { FAQSection } from '@/components/landing/FAQSection';
+import { ChefHat } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -77,8 +81,56 @@ const Index = () => {
     );
   }
 
+  // Scroll handlers
+  const scrollToAuth = () => {
+    const authElement = document.getElementById('auth');
+    authElement?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const scrollToFeatures = () => {
+    const featuresElement = document.getElementById('features');
+    featuresElement?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   if (!user) {
-    return <AuthForm />;
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Landing Page */}
+        <LandingHero onGetStarted={scrollToAuth} onViewFeatures={scrollToFeatures} />
+        <FeaturesSection />
+        <FAQSection />
+
+        {/* Auth Section */}
+        <section id="auth" className="py-24 px-4 bg-background">
+          <div className="max-w-md mx-auto">
+            <AuthForm />
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="border-t border-border bg-card py-12 px-4">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              {/* Logo & Brand */}
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+                  <ChefHat className="h-6 w-6 text-primary-foreground" />
+                </div>
+                <div>
+                  <p className="font-serif font-bold text-lg text-foreground">Chef AI</p>
+                  <p className="text-sm text-muted-foreground">Tu asistente culinario con IA</p>
+                </div>
+              </div>
+
+              {/* Copyright */}
+              <div className="text-center md:text-right text-sm text-muted-foreground">
+                <p>&copy; {new Date().getFullYear()} Chef AI. Todos los derechos reservados.</p>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    );
   }
 
   if (showOnboarding) {

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useMealPlanner } from '@/hooks/useMealPlanner';
+import { useSubscription } from '@/hooks/useSubscription';
 import { MealCard } from '@/components/MealCard';
 import { RecipeDetailDialog } from '@/components/RecipeDetailDialog';
+import { SubscriptionModal } from '@/components/SubscriptionModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ChevronLeft, ChevronRight, Sparkles, ShoppingCart } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, ChevronLeft, ChevronRight, Sparkles, ShoppingCart, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -45,8 +48,23 @@ export function MealPlanner() {
   const [userId, setUserId] = useState<string | null>(null);
   const [currentWeekDate, setCurrentWeekDate] = useState(new Date());
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [selectedMealItem, setSelectedMealItem] = useState<{ id: string; mealType: string; dayIndex: number } | null>(null);
   const [showRecipeDialog, setShowRecipeDialog] = useState(false);
   const [snackPreference, setSnackPreference] = useState<string>('3meals');
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
+  // Subscription hook
+  const {
+    subscribed,
+    plan,
+    loading: subLoading,
+    getMealPlanningDateRange,
+    canGenerateMealPlanForDate,
+    createCheckout,
+    openCustomerPortal
+  } = useSubscription();
+
+  const planningRange = getMealPlanningDateRange();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -110,8 +128,13 @@ export function MealPlanner() {
   };
 
   // View recipe details
-  const viewRecipeDetails = (recipe: Recipe) => {
+  const viewRecipeDetails = (recipe: Recipe, mealItemId?: string, mealType?: string, dayIndex?: number) => {
     setSelectedRecipe(recipe);
+    if (mealItemId && mealType && dayIndex !== undefined) {
+      setSelectedMealItem({ id: mealItemId, mealType, dayIndex });
+    } else {
+      setSelectedMealItem(null);
+    }
     setShowRecipeDialog(true);
   };
 
@@ -131,24 +154,77 @@ export function MealPlanner() {
 
   const activeMealTypes = getActiveMealTypes();
 
+  // Handle weekly plan generation with subscription check
+  const handleGenerateWeekly = async () => {
+    if (!subscribed || !canGenerateMealPlanForDate(weekStart)) {
+      setShowSubscriptionModal(true);
+      toast.error('Necesitas una suscripción activa');
+      return;
+    }
+
+    try {
+      await generateWeeklyPlan();
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message === 'SUBSCRIPTION_REQUIRED' || error.message?.startsWith('PERIOD_EXCEEDED:'))) {
+        setShowSubscriptionModal(true);
+      }
+    }
+  };
+
+  // Handle daily plan generation with subscription check
+  const handleGenerateDaily = async () => {
+    const today = new Date();
+    if (!subscribed || !canGenerateMealPlanForDate(today)) {
+      setShowSubscriptionModal(true);
+      toast.error('Fecha fuera de tu período de suscripción');
+      return;
+    }
+
+    try {
+      await generateDailyPlan();
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message === 'SUBSCRIPTION_REQUIRED' || error.message?.startsWith('PERIOD_EXCEEDED:'))) {
+        setShowSubscriptionModal(true);
+      }
+    }
+  };
+
   // Handle meal replacement
-  const handleReplaceMeal = async (mealItemId: string, dayIndex: number, mealType: string) => {
+  const handleReplaceMeal = async (mealItemId: string, dayIndex: number, mealType: string, preferences?: string) => {
     const date = new Date(weekStart);
     date.setDate(date.getDate() + dayIndex);
+
+    // Check subscription for this specific date
+    if (!subscribed || !canGenerateMealPlanForDate(date)) {
+      setShowSubscriptionModal(true);
+      toast.error('Fecha fuera de tu período de suscripción');
+      return;
+    }
+
     const dateStr = date.toLocaleDateString('es-AR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long'
     });
 
-    toast.promise(
-      replaceMeal(mealItemId, mealType),
-      {
-        loading: `Reemplazando ${MEAL_TYPE_LABELS[mealType as keyof typeof MEAL_TYPE_LABELS]} del ${dateStr}...`,
-        success: 'Comida reemplazada con éxito',
-        error: 'Error al reemplazar la comida',
+    const loadingMessage = preferences
+      ? `Generando nueva comida con tus preferencias...`
+      : `Reemplazando ${MEAL_TYPE_LABELS[mealType as keyof typeof MEAL_TYPE_LABELS]} del ${dateStr}...`;
+
+    try {
+      toast.promise(
+        replaceMeal(mealItemId, mealType, preferences),
+        {
+          loading: loadingMessage,
+          success: 'Comida reemplazada con éxito',
+          error: 'Error al reemplazar la comida',
+        }
+      );
+    } catch (error: unknown) {
+      if (error instanceof Error && (error.message === 'SUBSCRIPTION_REQUIRED' || error.message?.startsWith('PERIOD_EXCEEDED:'))) {
+        setShowSubscriptionModal(true);
       }
-    );
+    }
   };
 
   if (!userId || loading) {
@@ -162,6 +238,32 @@ export function MealPlanner() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Subscription Status Banners */}
+        {!subscribed && (
+          <Alert variant="destructive">
+            <Lock className="h-4 w-4" />
+            <AlertDescription>
+              El planificador de comidas requiere una suscripción activa.{' '}
+              <button
+                onClick={() => setShowSubscriptionModal(true)}
+                className="underline font-medium hover:no-underline"
+              >
+                Ver planes
+              </button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {subscribed && planningRange && (
+          <Alert>
+            <AlertDescription>
+              Plan {plan === 'weekly' ? 'Semanal' : 'Mensual'}: Puedes planificar hasta el{' '}
+              {new Date(planningRange.endDate).toLocaleDateString('es-AR')}
+              {' '}({planningRange.daysRemaining} días restantes)
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pl-12 md:pl-0">
           <div>
@@ -184,7 +286,13 @@ export function MealPlanner() {
               Siguiente
               <ChevronRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button onClick={() => generateDailyPlan()} disabled={generating} variant="outline" className="gap-2">
+            <Button
+              onClick={handleGenerateDaily}
+              disabled={generating || !subscribed || !canGenerateMealPlanForDate(new Date())}
+              variant="outline"
+              className="gap-2"
+            >
+              {!subscribed && <Lock className="h-4 w-4" />}
               {generating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -197,7 +305,12 @@ export function MealPlanner() {
                 </>
               )}
             </Button>
-            <Button onClick={generateWeeklyPlan} disabled={generating} className="gap-2">
+            <Button
+              onClick={handleGenerateWeekly}
+              disabled={generating || !subscribed || !canGenerateMealPlanForDate(weekStart)}
+              className="gap-2"
+            >
+              {!subscribed && <Lock className="h-4 w-4" />}
               {generating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -253,7 +366,7 @@ export function MealPlanner() {
                           }
                           onViewDetails={
                             mealItem?.recipe
-                              ? () => viewRecipeDetails(mealItem.recipe)
+                              ? () => viewRecipeDetails(mealItem.recipe, mealItem.id, mealType, dayIndex)
                               : undefined
                           }
                           onToggleCompleted={
@@ -312,6 +425,21 @@ export function MealPlanner() {
         recipe={selectedRecipe}
         open={showRecipeDialog}
         onOpenChange={setShowRecipeDialog}
+        mealType={selectedMealItem?.mealType as 'breakfast' | 'mid_morning_snack' | 'lunch' | 'afternoon_snack' | 'dinner'}
+        onReplace={
+          selectedMealItem
+            ? (preferences) => handleReplaceMeal(selectedMealItem.id, selectedMealItem.dayIndex, selectedMealItem.mealType, preferences)
+            : undefined
+        }
+      />
+
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onOpenChange={setShowSubscriptionModal}
+        currentPlan={plan}
+        onSubscribe={createCheckout}
+        onManage={openCustomerPortal}
       />
     </div>
   );
