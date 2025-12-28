@@ -151,7 +151,8 @@ function buildMealPrompt(
   calories: number,
   protein: number,
   carbs: number,
-  fat: number
+  fat: number,
+  userPreferences?: string
 ): string {
   const restrictionsText = profile.dietary_restrictions?.length
     ? profile.dietary_restrictions.join(', ')
@@ -166,6 +167,10 @@ function buildMealPrompt(
     ? 'comida casera normal, sin restricciones especiales, equilibrada y familiar'
     : `dieta ${dietType}`;
 
+  const preferencesSection = userPreferences
+    ? `\n⭐ PREFERENCIAS ESPECIALES DEL USUARIO: ${userPreferences}\n`
+    : '';
+
   return `Genera una receta para ${getMealTypeLabel(mealType)} que cumpla con los siguientes requisitos:
 - Tipo de dieta: ${dietTypeDescription}
 - Calorías: aproximadamente ${calories} kcal
@@ -177,9 +182,9 @@ function buildMealPrompt(
 - Preferencias de cocina: ${profile.cuisine_preferences?.join(', ') || 'variada'}
 - Porciones: ${profile.household_size} persona(s)
 - Tiempo máximo de preparación: ${profile.max_prep_time} minutos
-${profile.flexible_mode ? '- Modo flexible: Puedes ser creativo con ingredientes similares' : '- Modo estricto: Sigue exactamente las restricciones'}
+${profile.flexible_mode ? '- Modo flexible: Puedes ser creativo con ingredientes similares' : '- Modo estricto: Sigue exactamente las restricciones'}${preferencesSection}
 
-La receta debe ser práctica, con ingredientes accesibles y tiempo de preparación razonable.
+La receta debe ser práctica, con ingredientes accesibles y tiempo de preparación razonable.${userPreferences ? '\n\n¡IMPORTANTE! Ten en cuenta las preferencias especiales del usuario mencionadas arriba.' : ''}
 
 Responde ÚNICAMENTE con un JSON válido en este formato exacto:
 {
@@ -234,6 +239,7 @@ serve(async (req) => {
       itemIdToReplace,
       daysToGenerate = 7, // Default 7 days (full week), can be 1 for daily
       startDayOffset = 0, // Which day of the week to start from (0 = Monday, 6 = Sunday)
+      userPreferences, // User's custom preferences for meal regeneration
     } = requestBody;
 
     const finalUserId = userId || user_id;
@@ -281,6 +287,125 @@ serve(async (req) => {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
+    // =================================================================
+    // SUBSCRIPTION VALIDATION
+    // =================================================================
+    console.log('=== SUBSCRIPTION VALIDATION ===');
+
+    // 1. Get user's subscription status
+    const { data: subscription, error: subError } = await supabase
+      .from('user_subscriptions')
+      .select('plan, status, current_period_start, current_period_end')
+      .eq('user_id', finalUserId)
+      .single();
+
+    if (subError) {
+      console.error('Error fetching subscription:', subError);
+      return new Response(
+        JSON.stringify({
+          error: 'subscription_check_failed',
+          message: 'No se pudo verificar tu suscripción'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('User subscription:', subscription);
+
+    // 2. Validate user has active subscription (not free)
+    if (!subscription || subscription.plan === 'free' || subscription.status !== 'active') {
+      console.log('User does not have active paid subscription');
+      return new Response(
+        JSON.stringify({
+          error: 'subscription_required',
+          message: 'Necesitas una suscripción activa para usar el planificador de comidas',
+          plan: subscription?.plan || 'free'
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 3. Validate period dates exist
+    if (!subscription.current_period_start || !subscription.current_period_end) {
+      console.error('Subscription missing period dates');
+      return new Response(
+        JSON.stringify({
+          error: 'invalid_subscription',
+          message: 'Tu suscripción no tiene fechas válidas. Por favor contacta soporte.'
+        }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 4. Calculate target dates for generation
+    const periodStart = new Date(subscription.current_period_start);
+    const periodEnd = new Date(subscription.current_period_end);
+    const weekStartDate = new Date(finalWeekStart);
+    const now = new Date();
+
+    console.log('Date validation:', {
+      periodStart,
+      periodEnd,
+      weekStartDate,
+      now,
+      startDayOffset,
+      daysToGenerate
+    });
+
+    // 5. Calculate the actual date range being generated
+    const firstGeneratedDate = new Date(weekStartDate);
+    firstGeneratedDate.setDate(firstGeneratedDate.getDate() + startDayOffset);
+
+    const lastGeneratedDate = new Date(firstGeneratedDate);
+    lastGeneratedDate.setDate(lastGeneratedDate.getDate() + (daysToGenerate - 1));
+
+    console.log('Generation range:', {
+      firstGeneratedDate,
+      lastGeneratedDate
+    });
+
+    // 6. Validate dates are within subscription period
+    if (firstGeneratedDate < periodStart) {
+      return new Response(
+        JSON.stringify({
+          error: 'date_before_period',
+          message: `No puedes generar comidas antes del inicio de tu período de suscripción (${periodStart.toLocaleDateString('es-AR')})`
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (lastGeneratedDate > periodEnd) {
+      return new Response(
+        JSON.stringify({
+          error: 'date_after_period',
+          message: `No puedes generar comidas después del final de tu período de suscripción (${periodEnd.toLocaleDateString('es-AR')}). ${subscription.plan === 'weekly' ? 'Con plan semanal puedes planificar hasta 7 días adelante.' : 'Con plan mensual puedes planificar hasta 30 días adelante.'}`,
+          period_end: periodEnd.toISOString(),
+          plan: subscription.plan
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 7. Validate not planning too far in the past
+    const oneDayAgo = new Date(now);
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+
+    if (lastGeneratedDate < oneDayAgo) {
+      return new Response(
+        JSON.stringify({
+          error: 'date_in_past',
+          message: 'No puedes generar planes de comidas para fechas pasadas'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('✅ Subscription validation passed');
+    // =================================================================
+    // END SUBSCRIPTION VALIDATION
+    // =================================================================
+
     // Handle single meal replacement
     if (singleMeal && singleMealType && dateToReplace && itemIdToReplace) {
       const snackPreference = userProfile.snack_preference || '3meals';
@@ -296,7 +421,7 @@ serve(async (req) => {
       const mealCarbs = Math.round((mealCalories * macroDistribution.carbs / 100) / 4);
       const mealFat = Math.round((mealCalories * macroDistribution.fat / 100) / 9);
 
-      const prompt = buildMealPrompt(userProfile, singleMealType, mealCalories, mealProtein, mealCarbs, mealFat);
+      const prompt = buildMealPrompt(userProfile, singleMealType, mealCalories, mealProtein, mealCarbs, mealFat, userPreferences);
 
       const aiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,

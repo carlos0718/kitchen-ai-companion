@@ -5,6 +5,8 @@ export interface SubscriptionState {
   subscribed: boolean;
   plan: 'free' | 'weekly' | 'monthly';
   subscriptionEnd: string | null;
+  currentPeriodStart: string | null;
+  currentPeriodEnd: string | null;
   loading: boolean;
 }
 
@@ -13,6 +15,8 @@ export function useSubscription() {
     subscribed: false,
     plan: 'free',
     subscriptionEnd: null,
+    currentPeriodStart: null,
+    currentPeriodEnd: null,
     loading: true,
   });
 
@@ -36,6 +40,8 @@ export function useSubscription() {
         subscribed: response.data.subscribed,
         plan: response.data.plan || 'free',
         subscriptionEnd: response.data.subscription_end,
+        currentPeriodStart: response.data.current_period_start,
+        currentPeriodEnd: response.data.current_period_end,
         loading: false,
       });
     } catch (error) {
@@ -88,10 +94,43 @@ export function useSubscription() {
     }
   };
 
+  const getMealPlanningDateRange = useCallback(() => {
+    if (!state.subscribed || !state.currentPeriodStart || !state.currentPeriodEnd) {
+      return null;
+    }
+
+    const startDate = new Date(state.currentPeriodStart);
+    const endDate = new Date(state.currentPeriodEnd);
+
+    return {
+      startDate,
+      endDate,
+      daysRemaining: Math.ceil((endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)),
+    };
+  }, [state.subscribed, state.currentPeriodStart, state.currentPeriodEnd]);
+
+  const canGenerateMealPlanForDate = useCallback((targetDate: Date): boolean => {
+    if (!state.subscribed) return false;
+
+    const range = getMealPlanningDateRange();
+    if (!range) return false;
+
+    const targetTime = targetDate.getTime();
+    const now = new Date().getTime();
+
+    // Can only plan for future/current dates
+    if (targetTime < now - (24 * 60 * 60 * 1000)) return false;
+
+    // Must be within subscription period
+    return targetTime >= range.startDate.getTime() && targetTime <= range.endDate.getTime();
+  }, [state.subscribed, getMealPlanningDateRange]);
+
   return {
     ...state,
     checkSubscription,
     createCheckout,
     openCustomerPortal,
+    getMealPlanningDateRange,
+    canGenerateMealPlanForDate,
   };
 }

@@ -68,18 +68,47 @@ serve(async (req) => {
     let plan = "free";
     let subscriptionEnd = null;
 
+    let periodStart = null;
+    let periodEnd = null;
+
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      periodStart = new Date(subscription.current_period_start * 1000).toISOString();
+      periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      subscriptionEnd = periodEnd;
       const priceId = subscription.items.data[0].price.id;
       plan = PRICE_TO_PLAN[priceId] || "premium";
       console.log("[CHECK-SUBSCRIPTION] Active subscription found:", plan);
+
+      // Persist subscription data to database
+      const { error: upsertError } = await supabaseClient
+        .from('user_subscriptions')
+        .upsert({
+          user_id: user.id,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscription.id,
+          plan: plan,
+          status: subscription.status,
+          current_period_start: periodStart,
+          current_period_end: periodEnd,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (upsertError) {
+        console.error('[CHECK-SUBSCRIPTION] Error upserting subscription:', upsertError);
+      } else {
+        console.log('[CHECK-SUBSCRIPTION] Subscription data persisted to database');
+      }
     }
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
       plan,
       subscription_end: subscriptionEnd,
+      current_period_start: periodStart,
+      current_period_end: periodEnd,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
