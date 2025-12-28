@@ -58,27 +58,35 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     console.log("[CHECK-SUBSCRIPTION] Found customer:", customerId);
 
+    // Get all subscriptions (not just active) to handle past_due, canceled, etc.
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
       limit: 1,
     });
 
-    const hasActiveSub = subscriptions.data.length > 0;
+    const hasSub = subscriptions.data.length > 0;
     let plan = "free";
     let subscriptionEnd = null;
+    let status = null;
+    let cancelAtPeriodEnd = false;
+    let trialEnd = null;
 
     let periodStart = null;
     let periodEnd = null;
 
-    if (hasActiveSub) {
+    if (hasSub) {
       const subscription = subscriptions.data[0];
+      status = subscription.status;
       periodStart = new Date(subscription.current_period_start * 1000).toISOString();
       periodEnd = new Date(subscription.current_period_end * 1000).toISOString();
       subscriptionEnd = periodEnd;
+      cancelAtPeriodEnd = subscription.cancel_at_period_end;
+      trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
+
       const priceId = subscription.items.data[0].price.id;
       plan = PRICE_TO_PLAN[priceId] || "premium";
-      console.log("[CHECK-SUBSCRIPTION] Active subscription found:", plan);
+
+      console.log("[CHECK-SUBSCRIPTION] Subscription found:", { plan, status, cancelAtPeriodEnd });
 
       // Persist subscription data to database
       const { error: upsertError } = await supabaseClient
@@ -88,9 +96,12 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: subscription.id,
           plan: plan,
-          status: subscription.status,
+          status: status,
           current_period_start: periodStart,
           current_period_end: periodEnd,
+          cancel_at_period_end: cancelAtPeriodEnd,
+          trial_end: trialEnd,
+          canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
           updated_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id'
@@ -103,12 +114,18 @@ serve(async (req) => {
       }
     }
 
+    // Consider subscription active if status is 'active' or 'trialing'
+    const isSubscribed = hasSub && (status === 'active' || status === 'trialing');
+
     return new Response(JSON.stringify({
-      subscribed: hasActiveSub,
+      subscribed: isSubscribed,
       plan,
+      status,
       subscription_end: subscriptionEnd,
       current_period_start: periodStart,
       current_period_end: periodEnd,
+      cancel_at_period_end: cancelAtPeriodEnd,
+      trial_end: trialEnd,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

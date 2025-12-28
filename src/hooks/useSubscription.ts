@@ -4,20 +4,33 @@ import { supabase } from '@/integrations/supabase/client';
 export interface SubscriptionState {
   subscribed: boolean;
   plan: 'free' | 'weekly' | 'monthly';
+  status: string | null;
   subscriptionEnd: string | null;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  trialEnd: string | null;
   loading: boolean;
+  // Computed states
+  isPastDue: boolean;
+  isCanceling: boolean;
+  canUsePremiumFeatures: boolean;
 }
 
 export function useSubscription() {
   const [state, setState] = useState<SubscriptionState>({
     subscribed: false,
     plan: 'free',
+    status: null,
     subscriptionEnd: null,
     currentPeriodStart: null,
     currentPeriodEnd: null,
+    cancelAtPeriodEnd: false,
+    trialEnd: null,
     loading: true,
+    isPastDue: false,
+    isCanceling: false,
+    canUsePremiumFeatures: false,
   });
 
   const checkSubscription = useCallback(async () => {
@@ -36,13 +49,29 @@ export function useSubscription() {
         return;
       }
 
+      const status = response.data.status || null;
+      const subscribed = response.data.subscribed;
+      const plan = response.data.plan || 'free';
+      const cancelAtPeriodEnd = response.data.cancel_at_period_end || false;
+
+      // Compute derived states
+      const isPastDue = status === 'past_due';
+      const isCanceling = cancelAtPeriodEnd && status === 'active';
+      const canUsePremiumFeatures = subscribed && !isPastDue && status !== 'unpaid';
+
       setState({
-        subscribed: response.data.subscribed,
-        plan: response.data.plan || 'free',
+        subscribed,
+        plan,
+        status,
         subscriptionEnd: response.data.subscription_end,
         currentPeriodStart: response.data.current_period_start,
         currentPeriodEnd: response.data.current_period_end,
+        cancelAtPeriodEnd,
+        trialEnd: response.data.trial_end || null,
         loading: false,
+        isPastDue,
+        isCanceling,
+        canUsePremiumFeatures,
       });
     } catch (error) {
       console.error('Error checking subscription:', error);
@@ -52,10 +81,42 @@ export function useSubscription() {
 
   useEffect(() => {
     checkSubscription();
-    
-    // Refresh every minute
-    const interval = setInterval(checkSubscription, 60000);
-    return () => clearInterval(interval);
+
+    // Reduce polling to 5 minutes since webhooks handle real-time updates
+    const interval = setInterval(checkSubscription, 300000);
+
+    // Set up Realtime subscription for instant updates
+    const { data: { session } } = supabase.auth.getSession().then((result) => {
+      if (!result.data.session?.user?.id) return;
+
+      const userId = result.data.session.user.id;
+
+      const channel = supabase
+        .channel('user-subscription-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'user_subscriptions',
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            console.log('[REALTIME] Subscription changed:', payload);
+            // Refresh subscription data when changes are detected
+            checkSubscription();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    });
+
+    return () => {
+      clearInterval(interval);
+    };
   }, [checkSubscription]);
 
   const createCheckout = async (plan: 'weekly' | 'monthly') => {
