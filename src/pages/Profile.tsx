@@ -11,6 +11,9 @@ import {Checkbox} from '@/components/ui/checkbox';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
 import {User as UserIcon, Loader2} from 'lucide-react';
+import {BillingHistory} from '@/components/BillingHistory';
+import {PaymentMethodCard} from '@/components/PaymentMethodCard';
+import {NextBillingCard} from '@/components/NextBillingCard';
 
 const DIETARY_RESTRICTIONS = [
 	{id: 'vegetariano', label: 'Vegetariano'},
@@ -420,18 +423,31 @@ export function Profile() {
 					</div>
 				)}
 
-				<div className='mt-6 flex justify-end'>
-					<Button onClick={handleSave} disabled={saving} size='lg'>
-						{saving ? (
-							<>
-								<Loader2 className='mr-2 h-4 w-4 animate-spin' />
-								Guardando...
-							</>
-						) : (
-							'Guardar Cambios'
-						)}
-					</Button>
-				</div>
+				{/* Billing Section */}
+				{section === 'billing' && (
+					<div className='space-y-6'>
+						<div className='grid gap-6 md:grid-cols-2'>
+							<PaymentMethodCard />
+							<NextBillingCard />
+						</div>
+						<BillingHistory />
+					</div>
+				)}
+
+				{section !== 'billing' && (
+					<div className='mt-6 flex justify-end'>
+						<Button onClick={handleSave} disabled={saving} size='lg'>
+							{saving ? (
+								<>
+									<Loader2 className='mr-2 h-4 w-4 animate-spin' />
+									Guardando...
+								</>
+							) : (
+								'Guardar Cambios'
+							)}
+						</Button>
+					</div>
+				)}
 			</div>
 		</div>
 	);

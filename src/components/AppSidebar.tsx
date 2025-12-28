@@ -18,6 +18,7 @@ const profileSubItems = [
   { path: '/profile/diet', label: 'Dieta' },
   { path: '/profile/nutrition', label: 'Objetivos' },
   { path: '/profile/preferences', label: 'Preferencias' },
+  { path: '/profile/billing', label: 'Facturación' },
 ];
 
 export function AppSidebar() {
