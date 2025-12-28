@@ -86,12 +86,14 @@ export function useSubscription() {
     const interval = setInterval(checkSubscription, 300000);
 
     // Set up Realtime subscription for instant updates
-    const { data: { session } } = supabase.auth.getSession().then((result) => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    supabase.auth.getSession().then((result) => {
       if (!result.data.session?.user?.id) return;
 
       const userId = result.data.session.user.id;
 
-      const channel = supabase
+      channel = supabase
         .channel('user-subscription-changes')
         .on(
           'postgres_changes',
@@ -108,14 +110,13 @@ export function useSubscription() {
           }
         )
         .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     });
 
     return () => {
       clearInterval(interval);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [checkSubscription]);
 
