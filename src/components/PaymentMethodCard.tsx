@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 
 export function PaymentMethodCard() {
-  const { openCustomerPortal, subscribed } = useSubscription();
+  const { openCustomerPortal, subscribed, paymentGateway } = useSubscription();
   const [loading, setLoading] = useState(false);
 
   const handleManagePayment = async () => {
@@ -64,7 +64,7 @@ export function PaymentMethodCard() {
             <div>
               <p className="font-semibold">Método de pago configurado</p>
               <p className="text-sm text-muted-foreground">
-                Gestionado a través de Stripe
+                Gestionado a través de {paymentGateway === 'mercadopago' ? 'Mercado Pago' : 'Stripe'}
               </p>
             </div>
           </div>
@@ -83,28 +83,39 @@ export function PaymentMethodCard() {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          className="w-full gap-2"
-          onClick={handleManagePayment}
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Abriendo portal...
-            </>
-          ) : (
-            <>
-              <ExternalLink className="h-4 w-4" />
-              Actualizar método de pago
-            </>
-          )}
-        </Button>
+        {paymentGateway === 'mercadopago' ? (
+          <>
+            <p className="text-sm text-muted-foreground text-center p-4 border rounded-lg">
+              Para renovar tu suscripción, dirígete a la página de precios.
+              Mercado Pago no ofrece un portal de gestión de pagos.
+            </p>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              className="w-full gap-2"
+              onClick={handleManagePayment}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Abriendo portal...
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="h-4 w-4" />
+                  Actualizar método de pago
+                </>
+              )}
+            </Button>
 
-        <p className="text-xs text-muted-foreground text-center">
-          Serás redirigido al portal seguro de Stripe para gestionar tu método de pago
-        </p>
+            <p className="text-xs text-muted-foreground text-center">
+              Serás redirigido al portal seguro de Stripe para gestionar tu método de pago
+            </p>
+          </>
+        )}
       </CardContent>
     </Card>
   );

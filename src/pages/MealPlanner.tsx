@@ -5,6 +5,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { MealCard } from '@/components/MealCard';
 import { RecipeDetailDialog } from '@/components/RecipeDetailDialog';
 import { SubscriptionModal } from '@/components/SubscriptionModal';
+import { RenewalBanner } from '@/components/RenewalBanner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -238,6 +239,9 @@ export function MealPlanner() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Renewal Banner */}
+        <RenewalBanner />
+
         {/* Subscription Status Banners */}
         {!subscribed && (
           <Alert variant="destructive">

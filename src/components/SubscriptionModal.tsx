@@ -5,9 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Check, Crown, Sparkles, Loader2, X, TrendingDown, Star } from 'lucide-react';
+import { Check, Crown, Sparkles, Loader2, X, TrendingDown, Star, CreditCard } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SubscriptionModalProps {
   open: boolean;
@@ -17,59 +18,86 @@ interface SubscriptionModalProps {
   onManage: () => Promise<void>;
 }
 
-const PLANS = [
-  {
-    id: 'free' as const,
-    name: 'Gratis',
-    price: 0,
-    priceDisplay: '$0',
-    period: '',
-    features: [
-      { name: '15 consultas por semana', included: true },
-      { name: 'Recetas básicas', included: true },
-      { name: 'Historial limitado', included: true },
-      { name: 'Planificador de comidas', included: false },
-      { name: 'Recetas premium', included: false },
-      { name: 'Soporte prioritario', included: false },
-    ],
-    icon: Sparkles,
-  },
-  {
-    id: 'weekly' as const,
-    name: 'Semanal',
-    price: 4.99,
-    priceDisplay: '$4.99',
-    period: '/semana',
-    features: [
-      { name: 'Consultas ilimitadas', included: true },
-      { name: 'Todas las recetas', included: true },
-      { name: 'Historial completo', included: true },
-      { name: 'Planificador de comidas', included: true },
-      { name: 'Recetas premium', included: true },
-      { name: 'Soporte prioritario', included: true },
-    ],
-    icon: Crown,
-    popular: true,
-  },
-  {
-    id: 'monthly' as const,
-    name: 'Mensual',
-    price: 14.99,
-    priceDisplay: '$14.99',
-    period: '/mes',
-    features: [
-      { name: 'Consultas ilimitadas', included: true },
-      { name: 'Todas las recetas', included: true },
-      { name: 'Historial completo', included: true },
-      { name: 'Planificador de comidas', included: true },
-      { name: 'Recetas premium', included: true },
-      { name: 'Soporte prioritario', included: true },
-    ],
-    icon: Crown,
-    badge: 'Mejor Valor',
-    savings: 25,
-  },
-];
+const getPricing = (currency: 'USD' | 'ARS', exchangeRate?: number) => {
+  if (currency === 'ARS' && exchangeRate) {
+    // Calculate prices based on USD prices × MEP exchange rate
+    const weeklyARS = Math.round(4.99 * exchangeRate);
+    const monthlyARS = Math.round(14.99 * exchangeRate);
+
+    return {
+      weekly: {
+        price: weeklyARS,
+        display: `$${weeklyARS.toLocaleString('es-AR')}`
+      },
+      monthly: {
+        price: monthlyARS,
+        display: `$${monthlyARS.toLocaleString('es-AR')}`
+      },
+    };
+  }
+  return {
+    weekly: { price: 4.99, display: '$4.99' },
+    monthly: { price: 14.99, display: '$14.99' },
+  };
+};
+
+const getPlans = (currency: 'USD' | 'ARS', exchangeRate?: number) => {
+  const pricing = getPricing(currency, exchangeRate);
+
+  return [
+    {
+      id: 'free' as const,
+      name: 'Gratis',
+      price: 0,
+      priceDisplay: '$0',
+      period: '',
+      features: [
+        { name: '15 consultas por semana', included: true },
+        { name: 'Recetas básicas', included: true },
+        { name: 'Historial limitado', included: true },
+        { name: 'Planificador de comidas', included: false },
+        { name: 'Recetas premium', included: false },
+        { name: 'Soporte prioritario', included: false },
+      ],
+      icon: Sparkles,
+    },
+    {
+      id: 'weekly' as const,
+      name: 'Semanal',
+      price: pricing.weekly.price,
+      priceDisplay: pricing.weekly.display,
+      period: '/semana',
+      features: [
+        { name: 'Consultas ilimitadas', included: true },
+        { name: 'Todas las recetas', included: true },
+        { name: 'Historial completo', included: true },
+        { name: 'Planificador de comidas', included: true },
+        { name: 'Recetas premium', included: true },
+        { name: 'Soporte prioritario', included: true },
+      ],
+      icon: Crown,
+      popular: true,
+    },
+    {
+      id: 'monthly' as const,
+      name: 'Mensual',
+      price: pricing.monthly.price,
+      priceDisplay: pricing.monthly.display,
+      period: '/mes',
+      features: [
+        { name: 'Consultas ilimitadas', included: true },
+        { name: 'Todas las recetas', included: true },
+        { name: 'Historial completo', included: true },
+        { name: 'Planificador de comidas', included: true },
+        { name: 'Recetas premium', included: true },
+        { name: 'Soporte prioritario', included: true },
+      ],
+      icon: Crown,
+      badge: 'Mejor Valor',
+      savings: 25,
+    },
+  ];
+};
 
 // Feature comparison data
 const FEATURE_COMPARISON = [
@@ -91,6 +119,44 @@ export function SubscriptionModal({
   const [loading, setLoading] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showCanceled, setShowCanceled] = useState(false);
+  const [currency, setCurrency] = useState<'USD' | 'ARS'>('USD');
+  const [gateway, setGateway] = useState<'stripe' | 'mercadopago'>('stripe');
+  const [exchangeRate, setExchangeRate] = useState<number | undefined>(undefined);
+  const [detectingCountry, setDetectingCountry] = useState(true);
+
+  // Detect country and payment gateway when modal opens
+  useEffect(() => {
+    if (!open) return;
+
+    const detectCountry = async () => {
+      try {
+        setDetectingCountry(true);
+        const { data, error } = await supabase.functions.invoke('detect-country');
+
+        if (error) {
+          console.error('Error detecting country:', error);
+          // Default to USD/Stripe
+          setCurrency('USD');
+          setGateway('stripe');
+        } else {
+          setCurrency(data.currency || 'USD');
+          setGateway(data.gateway || 'stripe');
+          if (data.exchangeRate) {
+            setExchangeRate(data.exchangeRate);
+          }
+          console.log('[SUBSCRIPTION MODAL] Detected:', data);
+        }
+      } catch (error) {
+        console.error('Error detecting country:', error);
+        setCurrency('USD');
+        setGateway('stripe');
+      } finally {
+        setDetectingCountry(false);
+      }
+    };
+
+    detectCountry();
+  }, [open]);
 
   // Check for query parameters
   useEffect(() => {
@@ -139,12 +205,23 @@ export function SubscriptionModal({
     }
   };
 
+  // Get plans based on detected currency and exchange rate
+  const PLANS = getPlans(currency, exchangeRate);
+
   // Calculate savings
   const weeklyCost = PLANS.find(p => p.id === 'weekly')?.price || 0;
   const monthlyCost = PLANS.find(p => p.id === 'monthly')?.price || 0;
   const monthlyEquivalentWeekly = weeklyCost * 4;
   const savings = monthlyEquivalentWeekly - monthlyCost;
   const savingsPercentage = Math.round((savings / monthlyEquivalentWeekly) * 100);
+
+  // Format savings for display
+  const formatSavings = (amount: number) => {
+    if (currency === 'ARS') {
+      return `$${amount.toLocaleString('es-AR')}`;
+    }
+    return `$${amount.toFixed(2)}`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -156,6 +233,17 @@ export function SubscriptionModal({
           <DialogDescription className="text-base">
             Elige el plan que mejor se adapte a tus necesidades culinarias
           </DialogDescription>
+          {!detectingCountry && (
+            <div className="flex items-center gap-2 pt-2">
+              <Badge variant="outline" className="gap-1.5">
+                <CreditCard className="h-3 w-3" />
+                {gateway === 'mercadopago' ? 'Mercado Pago' : 'Stripe'}
+              </Badge>
+              <Badge variant="secondary">
+                {currency === 'ARS' ? 'Precios en Pesos Argentinos' : 'Precios en USD'}
+              </Badge>
+            </div>
+          )}
         </DialogHeader>
 
         {/* Success/Canceled Alerts */}
@@ -198,7 +286,7 @@ export function SubscriptionModal({
           {/* Plans Tab */}
           <TabsContent value="plans" className="mt-6">
             {/* Savings Banner */}
-            {currentPlan === 'free' && (
+            {currentPlan === 'free' && !detectingCountry && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -208,7 +296,7 @@ export function SubscriptionModal({
                   <TrendingDown className="h-5 w-5 text-amber-600" />
                   <div>
                     <p className="font-semibold text-foreground">
-                      ¡Ahorra ${savings.toFixed(2)} por mes!
+                      ¡Ahorra {formatSavings(savings)} por mes!
                     </p>
                     <p className="text-sm text-muted-foreground">
                       El plan mensual te ahorra {savingsPercentage}% comparado con pagar semanalmente
@@ -286,7 +374,10 @@ export function SubscriptionModal({
                           </div>
                           {plan.id === 'monthly' && (
                             <p className="text-xs text-muted-foreground mt-1">
-                              ${(monthlyCost / 4).toFixed(2)}/semana
+                              {currency === 'ARS'
+                                ? `$${Math.round(monthlyCost / 4).toLocaleString('es-AR')}/semana`
+                                : `$${(monthlyCost / 4).toFixed(2)}/semana`
+                              }
                             </p>
                           )}
                         </CardDescription>

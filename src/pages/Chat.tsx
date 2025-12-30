@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ChatPlayground } from '@/components/ChatPlayground';
+import { RenewalBanner } from '@/components/RenewalBanner';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 
@@ -35,7 +36,14 @@ export function Chat() {
     );
   }
 
-  return <ChatPlayground userId={userId} />;
+  return (
+    <div className="h-full">
+      <div className="container mx-auto px-4 pt-4">
+        <RenewalBanner />
+      </div>
+      <ChatPlayground userId={userId} />
+    </div>
+  );
 }
 
 export default Chat;

@@ -11,6 +11,10 @@ export interface SubscriptionState {
   cancelAtPeriodEnd: boolean;
   trialEnd: string | null;
   loading: boolean;
+  // Payment gateway info
+  paymentGateway: 'stripe' | 'mercadopago' | null;
+  isRecurring: boolean;
+  daysUntilExpiration: number | null;
   // Computed states
   isPastDue: boolean;
   isCanceling: boolean;
@@ -28,6 +32,9 @@ export function useSubscription() {
     cancelAtPeriodEnd: false,
     trialEnd: null,
     loading: true,
+    paymentGateway: null,
+    isRecurring: true,
+    daysUntilExpiration: null,
     isPastDue: false,
     isCanceling: false,
     canUsePremiumFeatures: false,
@@ -53,6 +60,9 @@ export function useSubscription() {
       const subscribed = response.data.subscribed;
       const plan = response.data.plan || 'free';
       const cancelAtPeriodEnd = response.data.cancel_at_period_end || false;
+      const paymentGateway = response.data.payment_gateway || null;
+      const isRecurring = response.data.is_recurring !== false; // Default to true for Stripe
+      const daysUntilExpiration = response.data.days_until_expiration || null;
 
       // Compute derived states
       const isPastDue = status === 'past_due';
@@ -69,6 +79,9 @@ export function useSubscription() {
         cancelAtPeriodEnd,
         trialEnd: response.data.trial_end || null,
         loading: false,
+        paymentGateway,
+        isRecurring,
+        daysUntilExpiration,
         isPastDue,
         isCanceling,
         canUsePremiumFeatures,
@@ -122,16 +135,43 @@ export function useSubscription() {
 
   const createCheckout = async (plan: 'weekly' | 'monthly') => {
     try {
-      const response = await supabase.functions.invoke('create-checkout', {
-        body: { plan },
-      });
+      // Detect user's country and appropriate payment gateway
+      const detectionResponse = await supabase.functions.invoke('detect-country');
 
-      if (response.error) {
-        throw new Error(response.error.message);
+      if (detectionResponse.error) {
+        console.error('Error detecting country:', detectionResponse.error);
+        // Default to Stripe if detection fails
       }
 
-      if (response.data?.url) {
-        window.open(response.data.url, '_blank');
+      const gateway = detectionResponse.data?.gateway || 'stripe';
+      console.log('[CHECKOUT] Using payment gateway:', gateway);
+
+      if (gateway === 'mercadopago') {
+        // Use Mercado Pago for Argentina
+        const response = await supabase.functions.invoke('mercadopago-create-preference', {
+          body: { plan },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
+
+        if (response.data?.init_point) {
+          window.open(response.data.init_point, '_blank');
+        }
+      } else {
+        // Use Stripe for international users
+        const response = await supabase.functions.invoke('create-checkout', {
+          body: { plan },
+        });
+
+        if (response.error) {
+          throw new Error(response.error.message);
+        }
+
+        if (response.data?.url) {
+          window.open(response.data.url, '_blank');
+        }
       }
     } catch (error) {
       console.error('Error creating checkout:', error);
@@ -141,6 +181,11 @@ export function useSubscription() {
 
   const openCustomerPortal = async () => {
     try {
+      // Customer portal is only available for Stripe users
+      if (state.paymentGateway === 'mercadopago') {
+        throw new Error('El portal de clientes no está disponible para Mercado Pago. Renueva tu suscripción desde la página de precios.');
+      }
+
       const response = await supabase.functions.invoke('customer-portal');
 
       if (response.error) {

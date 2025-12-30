@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download, ExternalLink, FileText, AlertCircle } from 'lucide-react';
+import { Download, ExternalLink, FileText, AlertCircle, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface Invoice {
   id: string;
@@ -45,6 +46,7 @@ export function BillingHistory() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { paymentGateway } = useSubscription();
 
   useEffect(() => {
     fetchInvoices();
@@ -190,6 +192,12 @@ export function BillingHistory() {
                   >
                     {STATUS_LABELS[invoice.status] || invoice.status}
                   </Badge>
+                  {paymentGateway && (
+                    <Badge variant="secondary" className="gap-1.5">
+                      <CreditCard className="h-3 w-3" />
+                      {paymentGateway === 'mercadopago' ? 'Mercado Pago' : 'Stripe'}
+                    </Badge>
+                  )}
                   <p className="text-lg font-bold text-primary">
                     {formatAmount(invoice.amount, invoice.currency)}
                   </p>

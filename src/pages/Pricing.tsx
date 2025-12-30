@@ -1,72 +1,100 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FAQSection } from '@/components/landing/FAQSection';
-import { Check, Crown, Sparkles, ArrowRight, Star, TrendingDown, X, ChefHat } from 'lucide-react';
+import { Check, Crown, Sparkles, ArrowRight, Star, TrendingDown, X, ChefHat, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
-const PLANS = [
-  {
-    id: 'free' as const,
-    name: 'Gratis',
-    price: 0,
-    priceDisplay: '$0',
-    period: '',
-    description: 'Perfecto para comenzar',
-    features: [
-      { name: '15 consultas por semana', included: true },
-      { name: 'Recetas básicas', included: true },
-      { name: 'Historial limitado', included: true },
-      { name: 'Planificador de comidas', included: false },
-      { name: 'Recetas premium', included: false },
-      { name: 'Soporte prioritario', included: false },
-    ],
-    icon: Sparkles,
-    cta: 'Comenzar gratis',
-  },
-  {
-    id: 'weekly' as const,
-    name: 'Semanal',
-    price: 4.99,
-    priceDisplay: '$4.99',
-    period: '/semana',
-    description: 'Ideal para probar todas las funcionalidades',
-    features: [
-      { name: 'Consultas ilimitadas', included: true },
-      { name: 'Todas las recetas', included: true },
-      { name: 'Historial completo', included: true },
-      { name: 'Planificador de comidas', included: true },
-      { name: 'Recetas premium', included: true },
-      { name: 'Soporte prioritario', included: true },
-    ],
-    icon: Crown,
-    popular: true,
-    cta: 'Comenzar ahora',
-  },
-  {
-    id: 'monthly' as const,
-    name: 'Mensual',
-    price: 14.99,
-    priceDisplay: '$14.99',
-    period: '/mes',
-    description: 'El mejor valor para uso continuo',
-    features: [
-      { name: 'Consultas ilimitadas', included: true },
-      { name: 'Todas las recetas', included: true },
-      { name: 'Historial completo', included: true },
-      { name: 'Planificador de comidas', included: true },
-      { name: 'Recetas premium', included: true },
-      { name: 'Soporte prioritario', included: true },
-    ],
-    icon: Crown,
-    savings: 25,
-    cta: 'Comenzar ahora',
-  },
-];
+const getPricing = (currency: 'USD' | 'ARS', exchangeRate?: number) => {
+  if (currency === 'ARS' && exchangeRate) {
+    // Calculate prices based on USD prices × MEP exchange rate
+    const weeklyARS = Math.round(4.99 * exchangeRate);
+    const monthlyARS = Math.round(14.99 * exchangeRate);
+
+    return {
+      weekly: {
+        price: weeklyARS,
+        display: `$${weeklyARS.toLocaleString('es-AR')}`
+      },
+      monthly: {
+        price: monthlyARS,
+        display: `$${monthlyARS.toLocaleString('es-AR')}`
+      },
+    };
+  }
+  return {
+    weekly: { price: 4.99, display: '$4.99' },
+    monthly: { price: 14.99, display: '$14.99' },
+  };
+};
+
+const getPlans = (currency: 'USD' | 'ARS', exchangeRate?: number) => {
+  const pricing = getPricing(currency, exchangeRate);
+
+  return [
+    {
+      id: 'free' as const,
+      name: 'Gratis',
+      price: 0,
+      priceDisplay: '$0',
+      period: '',
+      description: 'Perfecto para comenzar',
+      features: [
+        { name: '15 consultas por semana', included: true },
+        { name: 'Recetas básicas', included: true },
+        { name: 'Historial limitado', included: true },
+        { name: 'Planificador de comidas', included: false },
+        { name: 'Recetas premium', included: false },
+        { name: 'Soporte prioritario', included: false },
+      ],
+      icon: Sparkles,
+      cta: 'Comenzar gratis',
+    },
+    {
+      id: 'weekly' as const,
+      name: 'Semanal',
+      price: pricing.weekly.price,
+      priceDisplay: pricing.weekly.display,
+      period: '/semana',
+      description: 'Ideal para probar todas las funcionalidades',
+      features: [
+        { name: 'Consultas ilimitadas', included: true },
+        { name: 'Todas las recetas', included: true },
+        { name: 'Historial completo', included: true },
+        { name: 'Planificador de comidas', included: true },
+        { name: 'Recetas premium', included: true },
+        { name: 'Soporte prioritario', included: true },
+      ],
+      icon: Crown,
+      popular: true,
+      cta: 'Comenzar ahora',
+    },
+    {
+      id: 'monthly' as const,
+      name: 'Mensual',
+      price: pricing.monthly.price,
+      priceDisplay: pricing.monthly.display,
+      period: '/mes',
+      description: 'El mejor valor para uso continuo',
+      features: [
+        { name: 'Consultas ilimitadas', included: true },
+        { name: 'Todas las recetas', included: true },
+        { name: 'Historial completo', included: true },
+        { name: 'Planificador de comidas', included: true },
+        { name: 'Recetas premium', included: true },
+        { name: 'Soporte prioritario', included: true },
+      ],
+      icon: Crown,
+      savings: 25,
+      cta: 'Comenzar ahora',
+    },
+  ];
+};
 
 const FEATURE_COMPARISON = [
   { feature: 'Consultas de chat', free: '15/semana', weekly: 'Ilimitado', monthly: 'Ilimitado' },
@@ -80,8 +108,43 @@ const FEATURE_COMPARISON = [
 
 export function Pricing() {
   const navigate = useNavigate();
-  const { createCheckout, subscribed, plan: currentPlan } = useSubscription();
+  const { createCheckout, plan: currentPlan } = useSubscription();
   const [loading, setLoading] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<'USD' | 'ARS'>('USD');
+  const [gateway, setGateway] = useState<'stripe' | 'mercadopago'>('stripe');
+  const [exchangeRate, setExchangeRate] = useState<number | undefined>(undefined);
+  const [detectingCountry, setDetectingCountry] = useState(true);
+
+  // Detect country on component mount
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        setDetectingCountry(true);
+        const { data, error } = await supabase.functions.invoke('detect-country');
+
+        if (error) {
+          console.error('Error detecting country:', error);
+          setCurrency('USD');
+          setGateway('stripe');
+        } else {
+          setCurrency(data.currency || 'USD');
+          setGateway(data.gateway || 'stripe');
+          if (data.exchangeRate) {
+            setExchangeRate(data.exchangeRate);
+          }
+          console.log('[PRICING] Detected:', data);
+        }
+      } catch (error) {
+        console.error('Error detecting country:', error);
+        setCurrency('USD');
+        setGateway('stripe');
+      } finally {
+        setDetectingCountry(false);
+      }
+    };
+
+    detectCountry();
+  }, []);
 
   const handleGetStarted = async (planId: 'free' | 'weekly' | 'monthly') => {
     if (planId === 'free') {
@@ -101,10 +164,21 @@ export function Pricing() {
     }
   };
 
+  // Get plans based on detected currency
+  const PLANS = getPlans(currency);
+
   const weeklyCost = PLANS.find(p => p.id === 'weekly')?.price || 0;
   const monthlyCost = PLANS.find(p => p.id === 'monthly')?.price || 0;
   const monthlyEquivalentWeekly = weeklyCost * 4;
   const savings = monthlyEquivalentWeekly - monthlyCost;
+
+  // Format savings for display
+  const formatSavings = (amount: number) => {
+    if (currency === 'ARS') {
+      return `$${amount.toLocaleString('es-AR')}`;
+    }
+    return `$${amount.toFixed(2)}`;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,18 +206,38 @@ export function Pricing() {
               Elige el plan perfecto para tu viaje culinario. Sin compromisos, cancela cuando quieras.
             </p>
 
+            {/* Payment Gateway Badge */}
+            {!detectingCountry && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="flex items-center justify-center gap-2 mb-6"
+              >
+                <Badge variant="outline" className="gap-1.5">
+                  <CreditCard className="h-3 w-3" />
+                  {gateway === 'mercadopago' ? 'Mercado Pago' : 'Stripe'}
+                </Badge>
+                <Badge variant="secondary">
+                  {currency === 'ARS' ? 'Precios en Pesos Argentinos' : 'Precios en USD'}
+                </Badge>
+              </motion.div>
+            )}
+
             {/* Savings Highlight */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-3 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-full mb-12"
-            >
-              <TrendingDown className="h-5 w-5 text-amber-600" />
-              <p className="font-semibold">
-                ¡Ahorra ${savings.toFixed(2)}/mes con el plan mensual!
-              </p>
-            </motion.div>
+            {!detectingCountry && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="inline-flex items-center gap-3 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-full mb-12"
+              >
+                <TrendingDown className="h-5 w-5 text-amber-600" />
+                <p className="font-semibold">
+                  ¡Ahorra {formatSavings(savings)}/mes con el plan mensual!
+                </p>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Plan Cards */}
@@ -210,7 +304,10 @@ export function Pricing() {
                       </div>
                       {plan.id === 'monthly' && (
                         <p className="text-xs text-muted-foreground mt-2">
-                          ${(monthlyCost / 4).toFixed(2)}/semana
+                          {currency === 'ARS'
+                            ? `$${Math.round(monthlyCost / 4).toLocaleString('es-AR')}/semana`
+                            : `$${(monthlyCost / 4).toFixed(2)}/semana`
+                          }
                         </p>
                       )}
                     </CardHeader>

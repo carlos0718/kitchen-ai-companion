@@ -41,6 +41,73 @@ serve(async (req) => {
 
     console.log("[CHECK-SUBSCRIPTION] Checking for user:", user.email);
 
+    // First, check if user has a subscription in the database
+    const { data: dbSubscription, error: dbError } = await supabaseClient
+      .from('user_subscriptions')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    // If user has a Mercado Pago subscription, handle it separately
+    if (dbSubscription && dbSubscription.payment_gateway === 'mercadopago') {
+      console.log("[CHECK-SUBSCRIPTION] Found Mercado Pago subscription");
+
+      // Check if subscription has expired
+      const now = new Date();
+      const periodEnd = new Date(dbSubscription.current_period_end);
+      const isExpired = periodEnd < now;
+
+      if (isExpired && dbSubscription.status === 'active') {
+        console.log("[CHECK-SUBSCRIPTION] Mercado Pago subscription expired - auto-expiring");
+
+        // Auto-expire subscription
+        await supabaseClient
+          .from('user_subscriptions')
+          .update({
+            status: 'canceled',
+            plan: 'free',
+            subscribed: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+
+        // Return expired status
+        return new Response(JSON.stringify({
+          subscribed: false,
+          plan: 'free',
+          status: 'expired',
+          payment_gateway: 'mercadopago',
+          is_recurring: false,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
+      // Calculate days until expiration
+      let daysUntilExpiration = null;
+      if (dbSubscription.is_recurring === false && dbSubscription.current_period_end) {
+        const diffTime = periodEnd.getTime() - now.getTime();
+        daysUntilExpiration = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+
+      // Return current Mercado Pago subscription status
+      return new Response(JSON.stringify({
+        subscribed: dbSubscription.subscribed || dbSubscription.status === 'active',
+        plan: dbSubscription.plan,
+        status: dbSubscription.status,
+        payment_gateway: 'mercadopago',
+        is_recurring: dbSubscription.is_recurring,
+        current_period_start: dbSubscription.current_period_start,
+        current_period_end: dbSubscription.current_period_end,
+        days_until_expiration: daysUntilExpiration,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
+    // Continue with Stripe flow
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
@@ -126,6 +193,9 @@ serve(async (req) => {
       current_period_end: periodEnd,
       cancel_at_period_end: cancelAtPeriodEnd,
       trial_end: trialEnd,
+      payment_gateway: 'stripe',
+      is_recurring: true, // Stripe subscriptions are always recurring
+      days_until_expiration: null, // Stripe subscriptions don't expire (they auto-renew)
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

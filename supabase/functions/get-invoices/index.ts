@@ -37,15 +37,66 @@ serve(async (req) => {
 
     console.log("[GET-INVOICES] Fetching invoices for user:", user.id);
 
-    // Get user's Stripe customer ID from database
+    // Get user's subscription data from database
     const { data: subscription, error: subError } = await supabaseClient
       .from("user_subscriptions")
-      .select("stripe_customer_id")
+      .select("*")
       .eq("user_id", user.id)
       .single();
 
-    if (subError || !subscription?.stripe_customer_id) {
-      console.log("[GET-INVOICES] No customer found for user");
+    if (subError || !subscription) {
+      console.log("[GET-INVOICES] No subscription found for user");
+      return new Response(
+        JSON.stringify({ invoices: [] }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    let formattedInvoices: any[] = [];
+
+    // Handle Mercado Pago subscriptions
+    if (subscription.payment_gateway === 'mercadopago') {
+      console.log("[GET-INVOICES] Found Mercado Pago subscription - creating synthetic invoice");
+
+      // Create a synthetic invoice from the subscription data
+      if (subscription.mercadopago_payment_id && subscription.status === 'active') {
+        const syntheticInvoice = {
+          id: subscription.mercadopago_payment_id,
+          number: null,
+          amount: subscription.plan === 'weekly' ? 2500 : 8000, // ARS
+          currency: 'ARS',
+          status: 'paid',
+          created: new Date(subscription.current_period_start).getTime() / 1000,
+          period_start: new Date(subscription.current_period_start).getTime() / 1000,
+          period_end: new Date(subscription.current_period_end).getTime() / 1000,
+          invoice_pdf: null,
+          hosted_invoice_url: null,
+          payment_method: {
+            type: 'mercadopago',
+            last4: null,
+            brand: 'Mercado Pago',
+          },
+          description: `Suscripción ${subscription.plan === 'weekly' ? 'Semanal' : 'Mensual'} - Mercado Pago`,
+        };
+
+        formattedInvoices.push(syntheticInvoice);
+      }
+
+      return new Response(
+        JSON.stringify({ invoices: formattedInvoices }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // Handle Stripe subscriptions
+    if (!subscription.stripe_customer_id) {
+      console.log("[GET-INVOICES] No Stripe customer found for user");
       return new Response(
         JSON.stringify({ invoices: [] }),
         {
@@ -56,7 +107,7 @@ serve(async (req) => {
     }
 
     const customerId = subscription.stripe_customer_id;
-    console.log("[GET-INVOICES] Found customer:", customerId);
+    console.log("[GET-INVOICES] Found Stripe customer:", customerId);
 
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
@@ -68,10 +119,10 @@ serve(async (req) => {
       expand: ["data.payment_intent.payment_method"],
     });
 
-    console.log("[GET-INVOICES] Found", invoices.data.length, "invoices");
+    console.log("[GET-INVOICES] Found", invoices.data.length, "Stripe invoices");
 
     // Format invoice data for frontend
-    const formattedInvoices = invoices.data.map((invoice) => {
+    formattedInvoices = invoices.data.map((invoice) => {
       // Get payment method details if available
       let paymentMethod = null;
       if (invoice.payment_intent && typeof invoice.payment_intent !== "string") {
