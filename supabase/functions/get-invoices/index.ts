@@ -12,28 +12,43 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-    { auth: { persistSession: false } }
-  );
-
   try {
-    console.log("[GET-INVOICES] Function started");
+    console.log("[GET-INVOICES] === FUNCTION STARTED ===");
 
-    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
-
-    // Authenticate user
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
+    console.log("[GET-INVOICES] Auth header:", authHeader ? "present" : "missing");
+
+    // Create Supabase client
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    if (!authHeader) {
+      console.error("[GET-INVOICES] ERROR: No authorization header");
+      return new Response(JSON.stringify({ error: "No authorization header" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
 
     const token = authHeader.replace("Bearer ", "");
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
 
-    if (userError) throw new Error(`Auth error: ${userError.message}`);
+    if (userError || !userData?.user?.id) {
+      console.error("[GET-INVOICES] ERROR: Auth failed:", userError?.message);
+      return new Response(JSON.stringify({ error: "Authentication failed" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
     const user = userData.user;
-    if (!user?.id) throw new Error("User not authenticated");
+    console.log("[GET-INVOICES] User authenticated:", user.id);
+
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
     console.log("[GET-INVOICES] Fetching invoices for user:", user.id);
 
@@ -63,15 +78,18 @@ serve(async (req) => {
 
       // Create a synthetic invoice from the subscription data
       if (subscription.mercadopago_payment_id && subscription.status === 'active') {
+        const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start).getTime() / 1000 : Date.now() / 1000;
+        const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end).getTime() / 1000 : Date.now() / 1000;
+
         const syntheticInvoice = {
           id: subscription.mercadopago_payment_id,
           number: null,
           amount: subscription.plan === 'weekly' ? 2500 : 8000, // ARS
           currency: 'ARS',
           status: 'paid',
-          created: new Date(subscription.current_period_start).getTime() / 1000,
-          period_start: new Date(subscription.current_period_start).getTime() / 1000,
-          period_end: new Date(subscription.current_period_end).getTime() / 1000,
+          created: periodStart,
+          period_start: periodStart,
+          period_end: periodEnd,
           invoice_pdf: null,
           hosted_invoice_url: null,
           payment_method: {
@@ -110,7 +128,7 @@ serve(async (req) => {
     console.log("[GET-INVOICES] Found Stripe customer:", customerId);
 
     // Initialize Stripe
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-11-20.acacia" });
 
     // Fetch invoices from Stripe (last 12)
     const invoices = await stripe.invoices.list({

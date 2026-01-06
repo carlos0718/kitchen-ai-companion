@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const PRICES = {
-  weekly: "price_1SenRDCxUyIaGomE90wjTqaY",
-  monthly: "price_1SenRaCxUyIaGomE2UPpVqeE",
+  weekly: "price_1Sm4wc2Qj13dqOT58FrsxHdn",
+  monthly: "price_1Sm4xM2Qj13dqOT5NQqZrZsq",
 };
 
 serve(async (req) => {
@@ -41,7 +41,7 @@ serve(async (req) => {
     console.log("[CREATE-CHECKOUT] User authenticated:", user.email);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2025-08-27.basil",
+      apiVersion: "2024-11-20.acacia",
     });
 
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });

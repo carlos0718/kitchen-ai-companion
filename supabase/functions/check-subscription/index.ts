@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const PRICE_TO_PLAN: Record<string, string> = {
-  "price_1SenRDCxUyIaGomE90wjTqaY": "weekly",
-  "price_1SenRaCxUyIaGomE2UPpVqeE": "monthly",
+  "price_1Sm4wc2Qj13dqOT58FrsxHdn": "weekly",
+  "price_1Sm4xM2Qj13dqOT5NQqZrZsq": "monthly",
 };
 
 serve(async (req) => {
@@ -54,6 +54,30 @@ serve(async (req) => {
 
       // Check if subscription has expired
       const now = new Date();
+      if (!dbSubscription.current_period_end) {
+        console.log("[CHECK-SUBSCRIPTION] No period end date, treating as expired");
+        await supabaseClient
+          .from('user_subscriptions')
+          .update({
+            status: 'canceled',
+            plan: 'free',
+            subscribed: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+
+        return new Response(JSON.stringify({
+          subscribed: false,
+          plan: 'free',
+          status: 'expired',
+          payment_gateway: 'mercadopago',
+          is_recurring: false,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
       const periodEnd = new Date(dbSubscription.current_period_end);
       const isExpired = periodEnd < now;
 
@@ -108,7 +132,7 @@ serve(async (req) => {
     }
 
     // Continue with Stripe flow
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-11-20.acacia" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {

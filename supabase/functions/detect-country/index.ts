@@ -19,6 +19,10 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ⚠️ TESTING MODE: Force Argentina for Mercado Pago testing
+  // TODO: Remove this after testing is complete
+  const FORCE_ARGENTINA_FOR_TESTING = false;
+
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -27,25 +31,27 @@ serve(async (req) => {
 
   try {
     console.log("[DETECT-COUNTRY] Function started");
+    if (FORCE_ARGENTINA_FOR_TESTING) {
+      console.log("[DETECT-COUNTRY] ⚠️ TESTING MODE: Forcing Argentina");
+    }
 
-    // Authenticate user
+    // Try to authenticate user (optional - for saving preferences)
+    let user = null;
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header");
-    }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
 
-    if (userError) {
-      throw new Error(`Auth error: ${userError.message}`);
+      if (!userError && userData?.user?.id) {
+        user = userData.user;
+        console.log("[DETECT-COUNTRY] Detecting country for user:", user.id);
+      } else {
+        console.log("[DETECT-COUNTRY] No valid user session, proceeding as anonymous");
+      }
+    } else {
+      console.log("[DETECT-COUNTRY] No authorization header, proceeding as anonymous");
     }
-    const user = userData.user;
-    if (!user?.id) {
-      throw new Error("User not authenticated");
-    }
-
-    console.log("[DETECT-COUNTRY] Detecting country for user:", user.id);
 
     // Initialize result
     let result: CountryDetectionResult = {
@@ -55,22 +61,64 @@ serve(async (req) => {
       source: "default",
     };
 
-    // 1. Check if user already has a saved preference
-    const { data: profile } = await supabaseClient
-      .from("user_profiles")
-      .select("preferred_gateway, preferred_currency")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profile?.preferred_gateway && profile?.preferred_currency) {
-      console.log("[DETECT-COUNTRY] Using saved user preference");
+    // ⚠️ TESTING: Force Argentina
+    if (FORCE_ARGENTINA_FOR_TESTING) {
       result = {
-        country: profile.preferred_currency === "ARS" ? "AR" : "US",
-        gateway: profile.preferred_gateway as "stripe" | "mercadopago",
-        currency: profile.preferred_currency as "USD" | "ARS",
-        source: "user_profile",
+        country: "AR",
+        gateway: "mercadopago",
+        currency: "ARS",
+        source: "ip_detection",
       };
-    } else {
+      console.log("[DETECT-COUNTRY] Forced to Argentina for testing");
+
+      // Skip profile check and IP detection, go directly to exchange rate
+      if (result.currency === "ARS") {
+        try {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL");
+          const exchangeRateResponse = await fetch(`${supabaseUrl}/functions/v1/get-exchange-rate`);
+
+          if (exchangeRateResponse.ok) {
+            const exchangeData = await exchangeRateResponse.json();
+            result.exchangeRate = exchangeData.rate;
+            console.log("[DETECT-COUNTRY] Exchange rate fetched:", result.exchangeRate);
+          }
+        } catch (error) {
+          console.error("[DETECT-COUNTRY] Error fetching exchange rate:", error);
+        }
+      }
+
+      console.log("[DETECT-COUNTRY] Result (TESTING):", result);
+
+      return new Response(
+        JSON.stringify(result),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
+    // 1. Check if user already has a saved preference (only if authenticated)
+    if (user?.id) {
+      const { data: profile } = await supabaseClient
+        .from("user_profiles")
+        .select("preferred_gateway, preferred_currency")
+        .eq("user_id", user.id)
+        .single();
+
+      if (profile?.preferred_gateway && profile?.preferred_currency) {
+        console.log("[DETECT-COUNTRY] Using saved user preference");
+        result = {
+          country: profile.preferred_currency === "ARS" ? "AR" : "US",
+          gateway: profile.preferred_gateway as "stripe" | "mercadopago",
+          currency: profile.preferred_currency as "USD" | "ARS",
+          source: "user_profile",
+        };
+      }
+    }
+
+    // 2. If no saved preference, detect from IP
+    if (result.source === "default") {
       // 2. Detect from Cloudflare header (IP-based geolocation)
       const cfCountry = req.headers.get("CF-IPCountry");
       console.log("[DETECT-COUNTRY] CF-IPCountry header:", cfCountry);
@@ -95,24 +143,28 @@ serve(async (req) => {
           };
         }
 
-        // Save preference to user profile for future requests
-        const { error: updateError } = await supabaseClient
-          .from("user_profiles")
-          .upsert({
-            user_id: user.id,
-            preferred_gateway: result.gateway,
-            preferred_currency: result.currency,
-            updated_at: new Date().toISOString(),
-          }, {
-            onConflict: "user_id",
-            ignoreDuplicates: false,
-          });
+        // Save preference to user profile for future requests (only if authenticated)
+        if (user?.id) {
+          const { error: updateError } = await supabaseClient
+            .from("user_profiles")
+            .upsert({
+              user_id: user.id,
+              preferred_gateway: result.gateway,
+              preferred_currency: result.currency,
+              updated_at: new Date().toISOString(),
+            }, {
+              onConflict: "user_id",
+              ignoreDuplicates: false,
+            });
 
-        if (updateError) {
-          console.error("[DETECT-COUNTRY] Error saving preference:", updateError);
-          // Don't fail the request, just log the error
+          if (updateError) {
+            console.error("[DETECT-COUNTRY] Error saving preference:", updateError);
+            // Don't fail the request, just log the error
+          } else {
+            console.log("[DETECT-COUNTRY] Saved preference to user profile");
+          }
         } else {
-          console.log("[DETECT-COUNTRY] Saved preference to user profile");
+          console.log("[DETECT-COUNTRY] Skipping preference save (no user session)");
         }
       }
     }

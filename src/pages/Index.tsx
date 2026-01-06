@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { AuthForm } from '@/components/AuthForm';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { LandingHero } from '@/components/landing/LandingHero';
+import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { ChefHat } from 'lucide-react';
@@ -95,10 +96,107 @@ const Index = () => {
   if (!user) {
     return (
       <div className="min-h-screen bg-background">
+        {/* Navbar */}
+        <LandingNavbar />
+
         {/* Landing Page */}
-        <LandingHero onGetStarted={scrollToAuth} onViewFeatures={scrollToFeatures} />
-        <FeaturesSection />
-        <FAQSection />
+        <section id="hero">
+          <LandingHero onGetStarted={scrollToAuth} onViewFeatures={scrollToFeatures} />
+        </section>
+
+        <section id="features">
+          <FeaturesSection />
+        </section>
+
+        <section id="faq">
+          <FAQSection />
+        </section>
+
+        <section id="pricing" className="py-24 px-4 bg-background">
+          <div className="max-w-7xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-serif font-bold mb-4">Planes y Precios</h2>
+            <p className="text-muted-foreground mb-12">Elige el plan que mejor se adapte a tus necesidades</p>
+            <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {/* Free Plan */}
+              <div className="p-8 border border-border rounded-lg bg-card">
+                <h3 className="text-2xl font-bold mb-2">Plan Gratuito</h3>
+                <p className="text-4xl font-bold text-primary mb-4">$0<span className="text-lg text-muted-foreground">/semana</span></p>
+                <ul className="text-left space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>15 consultas gratis por semana</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Recetas personalizadas básicas</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Seguimiento nutricional</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Weekly Plan */}
+              <div className="p-8 border-2 border-primary rounded-lg bg-card shadow-lg relative">
+                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-medium">
+                  Más Popular
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Plan Semanal</h3>
+                <p className="text-4xl font-bold text-primary mb-4">$4.99<span className="text-lg text-muted-foreground">/semana</span></p>
+                <ul className="text-left space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span><strong>Consultas ilimitadas</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Planificación de comidas avanzada</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Recetas premium personalizadas</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Soporte prioritario</span>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Monthly Plan */}
+              <div className="p-8 border border-border rounded-lg bg-card">
+                <div className="inline-block bg-accent/20 text-accent-foreground px-3 py-1 rounded-full text-xs font-medium mb-2">
+                  Mejor Valor
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Plan Mensual</h3>
+                <p className="text-4xl font-bold text-primary mb-4">$14.99<span className="text-lg text-muted-foreground">/mes</span></p>
+                <ul className="text-left space-y-3 mb-6">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span><strong>Consultas ilimitadas</strong></span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Planificación de comidas avanzada</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Recetas premium personalizadas</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span>Soporte prioritario</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary">✓</span>
+                    <span className="text-sm text-muted-foreground">Ahorra $5 al mes</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Auth Section */}
         <section id="auth" className="py-24 px-4 bg-background">
