@@ -10,6 +10,7 @@ import Chat from "./pages/Chat";
 import MealPlanner from "./pages/MealPlanner";
 import DietGuide from "./pages/DietGuide";
 import Help from "./pages/Help";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppLayout } from "./components/AppLayout";
@@ -30,6 +31,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Routes with Navigation */}
           <Route

@@ -406,7 +406,13 @@ export function MealPlanner() {
               <p className="text-muted-foreground mb-6">
                 Genera un plan semanal completo con IA o agrega comidas manualmente
               </p>
-              <Button onClick={generateWeeklyPlan} disabled={generating} size="lg" className="gap-2">
+              <Button
+                onClick={handleGenerateWeekly}
+                disabled={generating || !subscribed || !canGenerateMealPlanForDate(weekStart)}
+                size="lg"
+                className="gap-2"
+              >
+                {!subscribed && <Lock className="h-5 w-5" />}
                 {generating ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />

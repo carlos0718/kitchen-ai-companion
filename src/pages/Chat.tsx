@@ -38,9 +38,7 @@ export function Chat() {
 
   return (
     <div className="h-full">
-      <div className="container mx-auto px-4 pt-4">
-        <RenewalBanner />
-      </div>
+      <RenewalBanner />
       <ChatPlayground userId={userId} />
     </div>
   );

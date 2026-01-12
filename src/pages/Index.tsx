@@ -199,8 +199,8 @@ const Index = () => {
         </section>
 
         {/* Auth Section */}
-        <section id="auth" className="py-24 px-4 bg-background">
-          <div className="max-w-md mx-auto">
+        <section id="auth" className="min-h-screen py-24 px-4 bg-background flex items-center justify-center">
+          <div className="w-full max-w-md">
             <AuthForm />
           </div>
         </section>

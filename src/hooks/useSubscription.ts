@@ -217,26 +217,55 @@ export function useSubscription() {
   }, [state.subscribed, state.currentPeriodStart, state.currentPeriodEnd]);
 
   const canGenerateMealPlanForDate = useCallback((targetDate: Date): boolean => {
-    if (!state.subscribed) return false;
+    if (!state.subscribed) {
+      return false;
+    }
 
     const range = getMealPlanningDateRange();
-    if (!range) return false;
+    if (!range) {
+      return false;
+    }
 
-    const targetTime = targetDate.getTime();
-    const now = new Date().getTime();
+    // Normalize dates to start of day (00:00:00) for fair comparison
+    const targetDateOnly = new Date(targetDate);
+    targetDateOnly.setHours(0, 0, 0, 0);
 
-    // Can only plan for future/current dates
-    if (targetTime < now - (24 * 60 * 60 * 1000)) return false;
+    const rangeStartOnly = new Date(range.startDate);
+    rangeStartOnly.setHours(0, 0, 0, 0);
 
-    // Must be within subscription period
-    return targetTime >= range.startDate.getTime() && targetTime <= range.endDate.getTime();
+    const rangeEndOnly = new Date(range.endDate);
+    rangeEndOnly.setHours(0, 0, 0, 0);
+
+    // User can generate meal plans for ANY date within their subscription period
+    // Weekly: 7 days from subscription date
+    // Monthly: 30 days from subscription date
+    return targetDateOnly >= rangeStartOnly && targetDateOnly <= rangeEndOnly;
   }, [state.subscribed, getMealPlanningDateRange]);
+
+  const cancelSubscription = async () => {
+    try {
+      const response = await supabase.functions.invoke('cancel-subscription');
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      // Refresh subscription status
+      await checkSubscription();
+
+      return response.data;
+    } catch (error) {
+      console.error('Error canceling subscription:', error);
+      throw error;
+    }
+  };
 
   return {
     ...state,
     checkSubscription,
     createCheckout,
     openCustomerPortal,
+    cancelSubscription,
     getMealPlanningDateRange,
     canGenerateMealPlanForDate,
   };

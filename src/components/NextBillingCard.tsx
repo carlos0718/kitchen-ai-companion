@@ -1,8 +1,22 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, DollarSign, TrendingUp, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, DollarSign, TrendingUp, AlertCircle, XCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 const PLAN_PRICES: Record<string, number> = {
   weekly: 4.99,
@@ -16,7 +30,24 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 export function NextBillingCard() {
-  const { subscribed, plan, currentPeriodEnd, cancelAtPeriodEnd, isPastDue, isCanceling } = useSubscription();
+  const { subscribed, plan, currentPeriodEnd, cancelAtPeriodEnd, isPastDue, isCanceling, cancelSubscription } = useSubscription();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCancelSubscription = async () => {
+    setIsSubmitting(true);
+    try {
+      await cancelSubscription();
+      toast.success('Suscripción cancelada', {
+        description: 'Tu suscripción se cancelará al final del período actual. Mantendrás acceso hasta entonces.',
+      });
+    } catch (error) {
+      toast.error('Error al cancelar', {
+        description: error instanceof Error ? error.message : 'No se pudo cancelar la suscripción',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (!subscribed || plan === 'free') {
     return (
@@ -153,9 +184,56 @@ export function NextBillingCard() {
           </div>
         )}
 
+        {/* Cancel Subscription Button - Only show if not already canceling */}
+        {!isCanceling && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Cancelando...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancelar suscripción
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>¿Estás seguro que quieres cancelar?</AlertDialogTitle>
+                <AlertDialogDescription className="space-y-3">
+                  <p>
+                    Al cancelar tu suscripción:
+                  </p>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Mantendrás acceso a las funcionalidades premium hasta el {currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' }) : 'final del período'}</li>
+                    <li>No se realizarán más cobros automáticos</li>
+                    <li>Después del período actual, volverás al plan gratuito con 15 consultas por semana</li>
+                    <li>Podrás volver a suscribirte en cualquier momento</li>
+                  </ul>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>No, mantener suscripción</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleCancelSubscription}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Sí, cancelar suscripción
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+
         <div className="text-xs text-muted-foreground pt-2 border-t">
           <p>
-            {plan === 'weekly' ? 'Cobro semanal' : 'Cobro mensual'}. Puedes cancelar en cualquier momento.
+            {plan === 'weekly' ? 'Cobro semanal' : 'Cobro mensual'}.{' '}
+            {isCanceling ? 'Suscripción programada para cancelar.' : 'Puedes cancelar en cualquier momento.'}
           </p>
         </div>
       </CardContent>

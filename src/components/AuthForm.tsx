@@ -9,6 +9,7 @@ import { ChefHat, Loader2 } from 'lucide-react';
 
 export function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -19,7 +20,19 @@ export function AuthForm() {
     setIsLoading(true);
 
     try {
-      if (isLogin) {
+      if (isForgotPassword) {
+        // Password recovery
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast({
+          title: 'Email enviado',
+          description: 'Revisa tu correo para restablecer tu contraseña.',
+        });
+        setIsForgotPassword(false);
+        setIsLogin(true);
+      } else if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -52,15 +65,18 @@ export function AuthForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <Card className="w-full">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
             <ChefHat className="h-6 w-6 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-serif">Chef AI</CardTitle>
           <CardDescription>
-            {isLogin ? 'Inicia sesión para continuar' : 'Crea tu cuenta'}
+            {isForgotPassword
+              ? 'Recuperar contraseña'
+              : isLogin
+                ? 'Inicia sesión para continuar'
+                : 'Crea tu cuenta'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -76,21 +92,36 @@ export function AuthForm() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
+            {!isForgotPassword && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Contraseña</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPassword(true)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  )}
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isForgotPassword ? (
+                'Enviar email de recuperación'
               ) : isLogin ? (
                 'Iniciar sesión'
               ) : (
@@ -99,17 +130,34 @@ export function AuthForm() {
             </Button>
           </form>
           <div className="mt-4 text-center text-sm text-muted-foreground">
-            {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
-            <button
-              type="button"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline font-medium"
-            >
-              {isLogin ? 'Regístrate' : 'Inicia sesión'}
-            </button>
+            {isForgotPassword ? (
+              <>
+                ¿Recordaste tu contraseña?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setIsLogin(true);
+                  }}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Inicia sesión
+                </button>
+              </>
+            ) : (
+              <>
+                {isLogin ? '¿No tienes cuenta?' : '¿Ya tienes cuenta?'}{' '}
+                <button
+                  type="button"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-primary hover:underline font-medium"
+                >
+                  {isLogin ? 'Regístrate' : 'Inicia sesión'}
+                </button>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
-    </div>
   );
 }

@@ -34,14 +34,15 @@ export function RenewalBanner() {
   };
 
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.3 }}
-        className="mb-6"
-      >
+    <div className="container mx-auto px-4 pt-4">
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3 }}
+          className="mb-6"
+        >
         <Alert
           variant={isUrgent ? 'destructive' : 'default'}
           className={
@@ -92,5 +93,6 @@ export function RenewalBanner() {
         </Alert>
       </motion.div>
     </AnimatePresence>
+    </div>
   );
 }
