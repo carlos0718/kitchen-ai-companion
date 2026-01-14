@@ -19,9 +19,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // ⚠️ TESTING MODE: Force Argentina for Mercado Pago testing
-  // TODO: Remove this after testing is complete
-  const FORCE_ARGENTINA_FOR_TESTING = false;
+  // 🔧 CONFIGURATION: Use only Mercado Pago for all countries
+  // Stripe is disabled until we can activate a Stripe account
+  const USE_ONLY_MERCADOPAGO = true;
 
   const supabaseClient = createClient(
     Deno.env.get("SUPABASE_URL") ?? "",
@@ -31,8 +31,8 @@ serve(async (req) => {
 
   try {
     console.log("[DETECT-COUNTRY] Function started");
-    if (FORCE_ARGENTINA_FOR_TESTING) {
-      console.log("[DETECT-COUNTRY] ⚠️ TESTING MODE: Forcing Argentina");
+    if (USE_ONLY_MERCADOPAGO) {
+      console.log("[DETECT-COUNTRY] 🔧 Using only Mercado Pago (Stripe disabled)");
     }
 
     // Try to authenticate user (optional - for saving preferences)
@@ -61,33 +61,31 @@ serve(async (req) => {
       source: "default",
     };
 
-    // ⚠️ TESTING: Force Argentina
-    if (FORCE_ARGENTINA_FOR_TESTING) {
+    // 🔧 CONFIGURATION: Force Mercado Pago for all countries
+    if (USE_ONLY_MERCADOPAGO) {
       result = {
         country: "AR",
         gateway: "mercadopago",
         currency: "ARS",
         source: "ip_detection",
       };
-      console.log("[DETECT-COUNTRY] Forced to Argentina for testing");
+      console.log("[DETECT-COUNTRY] Forcing Mercado Pago for all users");
 
-      // Skip profile check and IP detection, go directly to exchange rate
-      if (result.currency === "ARS") {
-        try {
-          const supabaseUrl = Deno.env.get("SUPABASE_URL");
-          const exchangeRateResponse = await fetch(`${supabaseUrl}/functions/v1/get-exchange-rate`);
+      // Fetch exchange rate for ARS pricing
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const exchangeRateResponse = await fetch(`${supabaseUrl}/functions/v1/get-exchange-rate`);
 
-          if (exchangeRateResponse.ok) {
-            const exchangeData = await exchangeRateResponse.json();
-            result.exchangeRate = exchangeData.rate;
-            console.log("[DETECT-COUNTRY] Exchange rate fetched:", result.exchangeRate);
-          }
-        } catch (error) {
-          console.error("[DETECT-COUNTRY] Error fetching exchange rate:", error);
+        if (exchangeRateResponse.ok) {
+          const exchangeData = await exchangeRateResponse.json();
+          result.exchangeRate = exchangeData.rate;
+          console.log("[DETECT-COUNTRY] Exchange rate fetched:", result.exchangeRate);
         }
+      } catch (error) {
+        console.error("[DETECT-COUNTRY] Error fetching exchange rate:", error);
       }
 
-      console.log("[DETECT-COUNTRY] Result (TESTING):", result);
+      console.log("[DETECT-COUNTRY] Result (Mercado Pago only):", result);
 
       return new Response(
         JSON.stringify(result),
