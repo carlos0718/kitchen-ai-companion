@@ -147,8 +147,8 @@ export function useSubscription() {
       console.log('[CHECKOUT] Using payment gateway:', gateway);
 
       if (gateway === 'mercadopago') {
-        // Use Mercado Pago for Argentina
-        const response = await supabase.functions.invoke('mercadopago-create-preference', {
+        // Use Mercado Pago Subscriptions API (recurring payments)
+        const response = await supabase.functions.invoke('mercadopago-create-subscription', {
           body: { plan },
         });
 
