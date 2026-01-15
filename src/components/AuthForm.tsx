@@ -48,9 +48,12 @@ export function AuthForm() {
         });
         if (error) throw error;
         toast({
-          title: '¡Cuenta creada!',
-          description: 'Ya puedes iniciar sesión.',
+          title: '✅ ¡Cuenta creada!',
+          description: 'Te enviamos un email de verificación. Por favor, revisa tu correo y confirma tu cuenta para poder iniciar sesión.',
+          className: 'bg-green-50 border-green-200',
         });
+        setEmail('');
+        setPassword('');
         setIsLogin(true);
       }
     } catch (error) {

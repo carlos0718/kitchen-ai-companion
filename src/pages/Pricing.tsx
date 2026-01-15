@@ -216,7 +216,7 @@ export function Pricing() {
               >
                 <Badge variant="outline" className="gap-1.5">
                   <CreditCard className="h-3 w-3" />
-                  {gateway === 'mercadopago' ? 'Mercado Pago' : 'Stripe'}
+                  Mercado Pago
                 </Badge>
                 <Badge variant="secondary">
                   {currency === 'ARS' ? 'Precios en Pesos Argentinos' : 'Precios en USD'}

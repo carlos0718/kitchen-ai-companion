@@ -119,8 +119,8 @@ export function SubscriptionModal({
   const [loading, setLoading] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showCanceled, setShowCanceled] = useState(false);
-  const [currency, setCurrency] = useState<'USD' | 'ARS'>('USD');
-  const [gateway, setGateway] = useState<'stripe' | 'mercadopago'>('stripe');
+  const [currency, setCurrency] = useState<'USD' | 'ARS'>('ARS');
+  const [gateway, setGateway] = useState<'stripe' | 'mercadopago'>('mercadopago');
   const [exchangeRate, setExchangeRate] = useState<number | undefined>(undefined);
   const [detectingCountry, setDetectingCountry] = useState(true);
 
@@ -135,12 +135,12 @@ export function SubscriptionModal({
 
         if (error) {
           console.error('Error detecting country:', error);
-          // Default to USD/Stripe
-          setCurrency('USD');
-          setGateway('stripe');
+          // Default to ARS/Mercado Pago
+          setCurrency('ARS');
+          setGateway('mercadopago');
         } else {
-          setCurrency(data.currency || 'USD');
-          setGateway(data.gateway || 'stripe');
+          setCurrency(data.currency || 'ARS');
+          setGateway(data.gateway || 'mercadopago');
           if (data.exchangeRate) {
             setExchangeRate(data.exchangeRate);
           }
@@ -148,8 +148,8 @@ export function SubscriptionModal({
         }
       } catch (error) {
         console.error('Error detecting country:', error);
-        setCurrency('USD');
-        setGateway('stripe');
+        setCurrency('ARS');
+        setGateway('mercadopago');
       } finally {
         setDetectingCountry(false);
       }
@@ -237,7 +237,7 @@ export function SubscriptionModal({
             <div className="flex items-center gap-2 pt-2">
               <Badge variant="outline" className="gap-1.5">
                 <CreditCard className="h-3 w-3" />
-                {gateway === 'mercadopago' ? 'Mercado Pago' : 'Stripe'}
+                Mercado Pago
               </Badge>
               <Badge variant="secondary">
                 {currency === 'ARS' ? 'Precios en Pesos Argentinos' : 'Precios en USD'}
