@@ -52,7 +52,45 @@ serve(async (req) => {
     if (dbSubscription.payment_gateway === 'mercadopago') {
       console.log("[CANCEL-SUBSCRIPTION] Canceling Mercado Pago subscription");
 
-      // For Mercado Pago, just update the database to mark as canceled
+      const mpAccessToken = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
+      if (!mpAccessToken) {
+        throw new Error("MERCADOPAGO_ACCESS_TOKEN is not set");
+      }
+
+      // If there's a subscription ID, cancel it in Mercado Pago
+      if (dbSubscription.mercadopago_subscription_id) {
+        console.log("[CANCEL-SUBSCRIPTION] Canceling MP subscription:", dbSubscription.mercadopago_subscription_id);
+
+        try {
+          // Cancel subscription in Mercado Pago API
+          const cancelResponse = await fetch(
+            `https://api.mercadopago.com/preapproval/${dbSubscription.mercadopago_subscription_id}`,
+            {
+              method: "PUT",
+              headers: {
+                "Authorization": `Bearer ${mpAccessToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                status: "cancelled",
+              }),
+            }
+          );
+
+          if (!cancelResponse.ok) {
+            const errorText = await cancelResponse.text();
+            console.error("[CANCEL-SUBSCRIPTION] MP API error:", errorText);
+            throw new Error(`Failed to cancel MP subscription: ${cancelResponse.status}`);
+          }
+
+          console.log("[CANCEL-SUBSCRIPTION] MP subscription canceled successfully");
+        } catch (mpError) {
+          console.error("[CANCEL-SUBSCRIPTION] Error canceling MP subscription:", mpError);
+          // Continue to update database even if MP cancellation fails
+        }
+      }
+
+      // Update database to mark as canceled
       const { error: updateError } = await supabaseClient
         .from('user_subscriptions')
         .update({
