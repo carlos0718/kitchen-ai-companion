@@ -5,6 +5,9 @@
   "installCommand": "npm install",
   "framework": "vite",
   "regions": ["iad1"],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": true,
