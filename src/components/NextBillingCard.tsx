@@ -15,10 +15,11 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
-const PLAN_PRICES: Record<string, number> = {
+const PLAN_PRICES_USD: Record<string, number> = {
   weekly: 4.99,
   monthly: 14.99,
 };
@@ -30,8 +31,47 @@ const PLAN_LABELS: Record<string, string> = {
 };
 
 export function NextBillingCard() {
-  const { subscribed, plan, currentPeriodEnd, cancelAtPeriodEnd, isPastDue, isCanceling, cancelSubscription } = useSubscription();
+  const {
+    subscribed,
+    plan,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    isPastDue,
+    isCanceling,
+    cancelSubscription,
+    paymentGateway
+  } = useSubscription();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currency, setCurrency] = useState<'USD' | 'ARS'>('USD');
+  const [exchangeRate, setExchangeRate] = useState<number | undefined>();
+
+  // Detect country and get pricing on mount
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('detect-country');
+
+        if (!error && data) {
+          setCurrency(data.currency || 'USD');
+          if (data.exchangeRate) {
+            setExchangeRate(data.exchangeRate);
+          }
+        }
+      } catch (error) {
+        console.error('Error detecting country:', error);
+      }
+    };
+
+    // If payment gateway is already known, use it to determine currency
+    if (paymentGateway === 'mercadopago') {
+      setCurrency('ARS');
+    } else if (paymentGateway === 'stripe') {
+      setCurrency('USD');
+    } else {
+      // Otherwise detect
+      detectCountry();
+    }
+  }, [paymentGateway]);
 
   const handleCancelSubscription = async () => {
     setIsSubmitting(true);
@@ -76,7 +116,17 @@ export function NextBillingCard() {
   const daysRemaining = nextBillingDate
     ? Math.ceil((nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : 0;
-  const amount = PLAN_PRICES[plan] || 0;
+
+  // Calculate price based on currency and exchange rate
+  const getPlanPrice = (planKey: string) => {
+    const basePriceUSD = PLAN_PRICES_USD[planKey] || 0;
+    if (currency === 'ARS' && exchangeRate) {
+      return Math.round(basePriceUSD * exchangeRate);
+    }
+    return basePriceUSD;
+  };
+
+  const amount = getPlanPrice(plan);
 
   const formatDate = (date: Date) => {
     return date.toLocaleDateString('es-AR', {
@@ -87,7 +137,10 @@ export function NextBillingCard() {
   };
 
   const formatAmount = (amount: number) => {
-    return new Intl.NumberFormat('es-AR', {
+    if (currency === 'ARS') {
+      return `$${amount.toLocaleString('es-AR')}`;
+    }
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
     }).format(amount);
