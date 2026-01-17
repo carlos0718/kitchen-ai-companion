@@ -244,91 +244,95 @@ export function MealPlanner() {
 
         {/* Subscription Status Banners */}
         {!subscribed && (
-          <Alert variant="destructive">
-            <Lock className="h-4 w-4" />
-            <AlertDescription>
-              El planificador de comidas requiere una suscripción activa.{' '}
-              <button
-                onClick={() => setShowSubscriptionModal(true)}
-                className="underline font-medium hover:no-underline"
-              >
-                Ver planes
-              </button>
-            </AlertDescription>
+          <Alert variant="destructive" className="py-2 md:py-3">
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 flex-shrink-0" />
+              <AlertDescription className="text-sm">
+                <span className="hidden sm:inline">El planificador de comidas requiere una suscripción activa. </span>
+                <span className="sm:hidden">Suscripción requerida. </span>
+                <button
+                  onClick={() => setShowSubscriptionModal(true)}
+                  className="underline font-medium hover:no-underline"
+                >
+                  Ver planes
+                </button>
+              </AlertDescription>
+            </div>
           </Alert>
         )}
 
         {subscribed && planningRange && (
-          <Alert>
-            <AlertDescription>
-              Plan {plan === 'weekly' ? 'Semanal' : 'Mensual'}: Puedes planificar hasta el{' '}
-              {new Date(planningRange.endDate).toLocaleDateString('es-AR')}
-              {' '}({planningRange.daysRemaining} días restantes)
+          <Alert className="py-2 md:py-3">
+            <AlertDescription className="text-xs md:text-sm">
+              <span className="font-medium">{plan === 'weekly' ? 'Plan Semanal' : 'Plan Mensual'}</span>
+              <span className="hidden sm:inline">: Puedes planificar hasta el{' '}
+                {new Date(planningRange.endDate).toLocaleDateString('es-AR')}
+              </span>
+              {' '}
+              <span className="text-primary font-medium">({planningRange.daysRemaining} días)</span>
             </AlertDescription>
           </Alert>
         )}
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pl-12 md:pl-0">
-          <div>
-            <h1 className="text-3xl font-serif font-bold">Planificador Semanal</h1>
-            <p className="text-muted-foreground mt-1">
+        <div className="space-y-4">
+          {/* Title and Date */}
+          <div className="text-center md:text-left">
+            <h1 className="text-2xl md:text-3xl font-serif font-bold">Planificador Semanal</h1>
+            <p className="text-muted-foreground text-sm md:text-base mt-1">
               {weekStart.toLocaleDateString('es-AR', { month: 'long', day: 'numeric' })} -{' '}
               {weekEnd.toLocaleDateString('es-AR', { month: 'long', day: 'numeric', year: 'numeric' })}
             </p>
           </div>
 
-          <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" onClick={goToPreviousWeek}>
-              <ChevronLeft className="h-4 w-4 mr-1" />
-              Anterior
+          {/* Navigation Buttons */}
+          <div className="flex items-center justify-center md:justify-start gap-2">
+            <Button variant="outline" size="sm" onClick={goToPreviousWeek} className="flex-1 md:flex-none">
+              <ChevronLeft className="h-4 w-4 md:mr-1" />
+              <span className="hidden md:inline">Anterior</span>
             </Button>
-            <Button variant="outline" onClick={goToCurrentWeek}>
+            <Button variant="outline" size="sm" onClick={goToCurrentWeek}>
               Hoy
             </Button>
-            <Button variant="outline" onClick={goToNextWeek}>
-              Siguiente
-              <ChevronRight className="h-4 w-4 ml-1" />
+            <Button variant="outline" size="sm" onClick={goToNextWeek} className="flex-1 md:flex-none">
+              <span className="hidden md:inline">Siguiente</span>
+              <ChevronRight className="h-4 w-4 md:ml-1" />
             </Button>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-2">
             <Button
               onClick={handleGenerateDaily}
               disabled={generating || !subscribed || !canGenerateMealPlanForDate(new Date())}
               variant="outline"
-              className="gap-2"
+              size="sm"
+              className="gap-1 md:gap-2 text-xs md:text-sm"
             >
-              {!subscribed && <Lock className="h-4 w-4" />}
+              {!subscribed && <Lock className="h-3 w-3 md:h-4 md:w-4" />}
               {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generando...
-                </>
+                <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
               ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Generar Hoy
-                </>
+                <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
               )}
+              <span className="hidden sm:inline">Generar</span> Hoy
             </Button>
             <Button
               onClick={handleGenerateWeekly}
               disabled={generating || !subscribed || !canGenerateMealPlanForDate(weekStart)}
-              className="gap-2"
+              size="sm"
+              className="gap-1 md:gap-2 text-xs md:text-sm"
             >
-              {!subscribed && <Lock className="h-4 w-4" />}
+              {!subscribed && <Lock className="h-3 w-3 md:h-4 md:w-4" />}
               {generating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generando...
-                </>
+                <Loader2 className="h-3 w-3 md:h-4 md:w-4 animate-spin" />
               ) : (
-                <>
-                  <Sparkles className="h-4 w-4" />
-                  Generar Semana
-                </>
+                <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
               )}
+              <span className="hidden sm:inline">Generar</span> Semana
             </Button>
-            <Button variant="secondary" className="gap-2">
-              <ShoppingCart className="h-4 w-4" />
+            <Button variant="secondary" size="sm" className="gap-1 md:gap-2 text-xs md:text-sm col-span-2 md:col-span-1">
+              <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
               Lista de Compras
             </Button>
           </div>

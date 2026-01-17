@@ -17,3 +17,24 @@ verify_jwt = false
 
 [functions.increment-usage]
 verify_jwt = false
+
+[functions.detect-country]
+verify_jwt = false
+
+[functions.mercadopago-create-subscription]
+verify_jwt = false
+
+[functions.mercadopago-webhook]
+verify_jwt = false
+
+[functions.mercadopago-create-preference]
+verify_jwt = false
+
+[functions.mercadopago-check-payment]
+verify_jwt = false
+
+[functions.cancel-subscription]
+verify_jwt = false
+
+[functions.get-exchange-rate]
+verify_jwt = false

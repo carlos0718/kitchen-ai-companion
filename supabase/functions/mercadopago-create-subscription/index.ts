@@ -100,14 +100,13 @@ serve(async (req) => {
         frequency_type: frequencyType,
         transaction_amount: price,
         currency_id: "ARS",
-        start_date: periodStart,
-        end_date: null, // null = indefinido, se renueva hasta que se cancele
       },
-      back_url: `${supabaseUrl?.replace("supabase.co", "supabase.co")}/profile/subscription`,
+      back_url: "https://kitchen-ai-companion.vercel.app/profile/subscription",
       payer_email: userEmail,
-      status: "pending",
       external_reference: user.id,
     };
+
+    console.log("[MP-CREATE-SUBSCRIPTION] Request body:", JSON.stringify(subscription));
 
     console.log("[MP-CREATE-SUBSCRIPTION] Calling Mercado Pago Preapproval API...");
 

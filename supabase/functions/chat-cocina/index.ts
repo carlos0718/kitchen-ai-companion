@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 interface UserProfile {
+  name?: string;
   age?: number;
   height?: number;
   weight?: number;
@@ -16,66 +17,284 @@ interface UserProfile {
   allergies?: string[];
   cuisine_preferences?: string[];
   daily_calorie_goal?: number;
+  protein_goal?: number;
+  carbs_goal?: number;
+  fat_goal?: number;
   household_size?: number;
   cooking_skill_level?: string;
   max_prep_time?: number;
+  diet_type?: string;
+  flexible_mode?: boolean;
+  snack_preference?: string;
+  fitness_goal?: string;
 }
 
-const BASE_SYSTEM_PROMPT = `Eres Chef AI, un asistente de cocina casera experto y amigable. Tu objetivo es ayudar a los usuarios a crear recetas deliciosas y saludables adaptadas a sus necesidades nutricionales.
+// Calcular calorías diarias recomendadas usando Harris-Benedict
+function calculateDailyCalories(profile: UserProfile): number | null {
+  if (!profile.weight || !profile.height || !profile.age || !profile.gender) {
+    return null;
+  }
 
-Directrices:
-- Al saludar o en conversaciones iniciales, pregunta proactivamente sobre sus objetivos:
-  * ¿Qué tipo de dieta quieres seguir? (vegetariana, vegana, keto, mediterránea, alta en proteínas, etc.)
-  * ¿Tienen algún objetivo específico? (bajar de peso, ganar masa muscular, mantenerse saludable)
-  * ¿Tienen restricciones o alergias alimentarias?
-  * o simplemente quieres una receta rápida y fácil?
+  let bmr: number;
+
+  // Fórmula de Mifflin-St Jeor (más precisa que Harris-Benedict)
+  if (profile.gender === 'male') {
+    bmr = (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) + 5;
+  } else {
+    bmr = (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) - 161;
+  }
+
+  // Factor de actividad moderada (1.55) como default
+  const activityFactor = 1.55;
+  let tdee = bmr * activityFactor;
+
+  // Ajustar según objetivo
+  if (profile.fitness_goal === 'lose_weight') {
+    tdee *= 0.85; // Déficit del 15%
+  } else if (profile.fitness_goal === 'gain_muscle') {
+    tdee *= 1.1; // Superávit del 10%
+  }
+
+  return Math.round(tdee);
+}
+
+// Calcular peso ideal y rango saludable basado en altura
+function calculateIdealWeight(heightCm: number, gender: string): { ideal: number; min: number; max: number } {
+  const heightM = heightCm / 100;
+
+  // Rango saludable basado en IMC 18.5 - 24.9
+  const minWeight = Math.round(18.5 * heightM * heightM);
+  const maxWeight = Math.round(24.9 * heightM * heightM);
+
+  // Peso ideal usando fórmula de Devine modificada
+  let idealWeight: number;
+  if (gender === 'male') {
+    // Hombres: 50 + 2.3 * (altura en pulgadas - 60)
+    const heightInches = heightCm / 2.54;
+    idealWeight = 50 + 2.3 * (heightInches - 60);
+  } else {
+    // Mujeres: 45.5 + 2.3 * (altura en pulgadas - 60)
+    const heightInches = heightCm / 2.54;
+    idealWeight = 45.5 + 2.3 * (heightInches - 60);
+  }
+
+  // Asegurar que el peso ideal esté dentro del rango saludable
+  idealWeight = Math.max(minWeight, Math.min(maxWeight, Math.round(idealWeight)));
+
+  return { ideal: idealWeight, min: minWeight, max: maxWeight };
+}
+
+// Clasificar IMC
+function classifyBMI(bmi: number): { status: string; emoji: string; recommendation: string } {
+  if (bmi < 18.5) {
+    return {
+      status: 'bajo peso',
+      emoji: '⚠️',
+      recommendation: 'Te recomiendo aumentar gradualmente tu ingesta calórica con alimentos nutritivos.'
+    };
+  } else if (bmi < 25) {
+    return {
+      status: 'peso saludable',
+      emoji: '✅',
+      recommendation: '¡Excelente! Tu peso está en un rango saludable. Enfócate en mantenerlo.'
+    };
+  } else if (bmi < 30) {
+    return {
+      status: 'sobrepeso',
+      emoji: '📊',
+      recommendation: 'Podemos trabajar juntos en recetas bajas en calorías pero deliciosas para ayudarte a alcanzar tu peso ideal.'
+    };
+  } else {
+    return {
+      status: 'obesidad',
+      emoji: '🎯',
+      recommendation: 'Te ayudaré con recetas saludables y balanceadas. Recuerda que pequeños cambios llevan a grandes resultados.'
+    };
+  }
+}
+
+// Traducir valores del perfil
+function translateDietType(dietType: string): string {
+  const translations: Record<string, string> = {
+    'casera_normal': 'comida casera tradicional',
+    'keto': 'dieta cetogénica (keto)',
+    'paleo': 'dieta paleo',
+    'vegetariano': 'dieta vegetariana',
+    'vegano': 'dieta vegana',
+    'deportista': 'dieta alta en proteínas para deportistas',
+    'mediterranea': 'dieta mediterránea'
+  };
+  return translations[dietType] || dietType;
+}
+
+function translateFitnessGoal(goal: string): string {
+  const translations: Record<string, string> = {
+    'lose_weight': 'bajar de peso',
+    'gain_muscle': 'ganar masa muscular',
+    'maintain': 'mantener peso actual',
+    'eat_healthy': 'comer más saludable'
+  };
+  return translations[goal] || goal;
+}
+
+function translateGender(gender: string): string {
+  const translations: Record<string, string> = {
+    'male': 'masculino',
+    'female': 'femenino',
+    'other': 'otro'
+  };
+  return translations[gender] || gender;
+}
+
+const BASE_SYSTEM_PROMPT = `Eres Chef AI, un asistente de cocina casera experto, nutricionista y amigable. Tu objetivo es ayudar a los usuarios a crear recetas deliciosas y saludables adaptadas a sus necesidades nutricionales específicas.
+
+IMPORTANTE - COMPORTAMIENTO EN PRIMERA INTERACCIÓN:
+- Si el usuario tiene perfil completo (peso, altura, edad, objetivos), NO hagas preguntas sobre esa información. Ya la conoces.
+- En tu primer mensaje, da la bienvenida personalizada mencionando lo que sabes del usuario.
+- Ofrece directamente ayuda con recetas adaptadas a su perfil.
+- Solo pregunta información que NO tengas en el perfil.
+
+Directrices generales:
 - Sugiere recetas simples y prácticas para cocina casera
 - Adapta las recetas según los ingredientes mencionados por el usuario
 - Ofrece alternativas cuando falten ingredientes
 - Proporciona tiempos de preparación y cocción estimados
-- Da consejos útiles de cocina y nutrición
+- Da consejos útiles de cocina y nutrición basados en el perfil del usuario
 - Sé cálido, motivador y entusiasta
 - Si el usuario menciona ingredientes, sugiere 2-3 recetas posibles
 - Incluye instrucciones paso a paso claras
-- Menciona valores nutricionales básicos (calorías, proteínas, carbohidratos, grasas)
-- Adapta tus sugerencias al tipo de dieta y objetivos mencionados
+- SIEMPRE menciona valores nutricionales (calorías, proteínas, carbohidratos, grasas) por porción
+- Adapta las porciones y calorías al objetivo calórico diario del usuario
 
 Responde siempre en español de forma clara, concisa y motivadora.`;
 
 function buildSystemPrompt(userProfile: UserProfile | null): string {
   if (!userProfile) return BASE_SYSTEM_PROMPT;
 
-  let userContext = '\n\nCONTEXTO DEL USUARIO:';
+  let userContext = '\n\n═══════════════════════════════════════\nPERFIL COMPLETO DEL USUARIO:\n═══════════════════════════════════════';
 
+  // Información personal
+  if (userProfile.name) {
+    userContext += `\n👤 Nombre: ${userProfile.name}`;
+  }
+
+  // Datos biométricos y análisis
+  const hasBiometrics = userProfile.age && userProfile.height && userProfile.weight;
+  if (hasBiometrics) {
+    userContext += `\n\n📊 DATOS FÍSICOS:`;
+    userContext += `\n- Edad: ${userProfile.age} años`;
+    userContext += `\n- Altura: ${userProfile.height} cm`;
+    userContext += `\n- Peso: ${userProfile.weight} kg`;
+    if (userProfile.gender) {
+      userContext += `\n- Género: ${translateGender(userProfile.gender)}`;
+    }
+
+    // Análisis de IMC y peso ideal
+    if (userProfile.bmi && userProfile.height && userProfile.gender) {
+      const bmiAnalysis = classifyBMI(userProfile.bmi);
+      const idealWeight = calculateIdealWeight(userProfile.height, userProfile.gender);
+      const weightDiff = userProfile.weight ? Math.round(userProfile.weight - idealWeight.ideal) : 0;
+
+      userContext += `\n\n📈 ANÁLISIS DE PESO:`;
+      userContext += `\n- IMC actual: ${userProfile.bmi.toFixed(1)} (${bmiAnalysis.status}) ${bmiAnalysis.emoji}`;
+      userContext += `\n- Peso actual: ${userProfile.weight} kg`;
+      userContext += `\n- Peso ideal para tu altura: ${idealWeight.ideal} kg`;
+      userContext += `\n- Rango saludable: ${idealWeight.min} - ${idealWeight.max} kg`;
+
+      if (weightDiff > 0) {
+        userContext += `\n- Para alcanzar tu peso ideal necesitas perder: ${weightDiff} kg`;
+      } else if (weightDiff < 0) {
+        userContext += `\n- Para alcanzar tu peso ideal necesitas ganar: ${Math.abs(weightDiff)} kg`;
+      } else {
+        userContext += `\n- ¡Estás en tu peso ideal! 🎉`;
+      }
+
+      userContext += `\n- ${bmiAnalysis.recommendation}`;
+    } else if (userProfile.bmi) {
+      const bmiAnalysis = classifyBMI(userProfile.bmi);
+      userContext += `\n\n📈 ANÁLISIS DE PESO:`;
+      userContext += `\n- IMC: ${userProfile.bmi.toFixed(1)} (${bmiAnalysis.status}) ${bmiAnalysis.emoji}`;
+      userContext += `\n- Recomendación: ${bmiAnalysis.recommendation}`;
+    }
+
+    // Calorías recomendadas
+    const calculatedCalories = calculateDailyCalories(userProfile);
+    const dailyCalories = userProfile.daily_calorie_goal || calculatedCalories;
+    if (dailyCalories) {
+      userContext += `\n\n🔥 REQUERIMIENTO CALÓRICO:`;
+      userContext += `\n- Calorías diarias recomendadas: ~${dailyCalories} kcal/día`;
+      userContext += `\n- Por comida principal (aprox): ~${Math.round(dailyCalories / 3)} kcal`;
+      if (userProfile.snack_preference === '4meals' || userProfile.snack_preference === '5meals') {
+        const snacks = userProfile.snack_preference === '5meals' ? 2 : 1;
+        userContext += `\n- Por snack (aprox): ~${Math.round(dailyCalories * 0.1)} kcal`;
+      }
+    }
+
+    // Macros si están definidos
+    if (userProfile.protein_goal || userProfile.carbs_goal || userProfile.fat_goal) {
+      userContext += `\n\n🥗 MACRONUTRIENTES OBJETIVO:`;
+      if (userProfile.protein_goal) userContext += `\n- Proteínas: ${userProfile.protein_goal}g`;
+      if (userProfile.carbs_goal) userContext += `\n- Carbohidratos: ${userProfile.carbs_goal}g`;
+      if (userProfile.fat_goal) userContext += `\n- Grasas: ${userProfile.fat_goal}g`;
+    }
+  }
+
+  // Objetivo de fitness
+  if (userProfile.fitness_goal) {
+    userContext += `\n\n🎯 OBJETIVO: ${translateFitnessGoal(userProfile.fitness_goal).toUpperCase()}`;
+  }
+
+  // Tipo de dieta
+  if (userProfile.diet_type) {
+    userContext += `\n\n🍽️ TIPO DE DIETA: ${translateDietType(userProfile.diet_type)}`;
+  }
+
+  // Restricciones y alergias (CRÍTICO)
   if (userProfile.dietary_restrictions?.length > 0) {
-    userContext += `\n- Restricciones dietéticas: ${userProfile.dietary_restrictions.join(', ')}. NUNCA sugieras recetas que violen estas restricciones.`;
+    userContext += `\n\n⚠️ RESTRICCIONES DIETÉTICAS: ${userProfile.dietary_restrictions.join(', ')}`;
+    userContext += `\n   ¡NUNCA sugieras recetas que violen estas restricciones!`;
   }
 
   if (userProfile.allergies?.length > 0) {
-    userContext += `\n- Alergias: ${userProfile.allergies.join(', ')}. NUNCA uses estos ingredientes.`;
+    userContext += `\n\n🚫 ALERGIAS: ${userProfile.allergies.join(', ')}`;
+    userContext += `\n   ¡NUNCA uses estos ingredientes bajo ninguna circunstancia!`;
   }
 
+  // Preferencias
   if (userProfile.cuisine_preferences?.length > 0) {
-    userContext += `\n- Preferencias de cocina: ${userProfile.cuisine_preferences.join(', ')}.`;
+    userContext += `\n\n❤️ Cocinas favoritas: ${userProfile.cuisine_preferences.join(', ')}`;
   }
 
-  if (userProfile.daily_calorie_goal) {
-    userContext += `\n- Objetivo calórico: ~${Math.round(userProfile.daily_calorie_goal / 3)} kcal por comida.`;
-  }
-
+  // Contexto del hogar
+  userContext += `\n\n🏠 CONTEXTO:`;
   if (userProfile.household_size) {
-    userContext += `\n- Cocina para ${userProfile.household_size} persona(s).`;
+    userContext += `\n- Cocina para: ${userProfile.household_size} persona(s)`;
   }
-
   if (userProfile.cooking_skill_level) {
-    userContext += `\n- Nivel de cocina: ${userProfile.cooking_skill_level}.`;
+    userContext += `\n- Nivel de cocina: ${userProfile.cooking_skill_level}`;
   }
-
   if (userProfile.max_prep_time) {
-    userContext += `\n- Tiempo máximo de preparación: ${userProfile.max_prep_time} minutos.`;
+    userContext += `\n- Tiempo máximo de preparación: ${userProfile.max_prep_time} minutos`;
+  }
+  if (userProfile.snack_preference) {
+    const mealsText = userProfile.snack_preference === '3meals' ? '3 comidas' :
+                      userProfile.snack_preference === '4meals' ? '4 comidas (con 1 snack)' :
+                      '5 comidas (con 2 snacks)';
+    userContext += `\n- Comidas por día: ${mealsText}`;
+  }
+  if (userProfile.flexible_mode !== undefined) {
+    userContext += `\n- Modo flexible: ${userProfile.flexible_mode ? 'Sí (puede sugerir sustitutos)' : 'No (ingredientes exactos)'}`;
   }
 
-  userContext += '\n\nAdapta todas tus sugerencias según este perfil.';
+  userContext += `\n\n═══════════════════════════════════════
+INSTRUCCIONES ESPECIALES:
+- En tu PRIMER mensaje, saluda al usuario por su nombre si lo conoces.
+- Menciona brevemente su objetivo (ej: "Veo que tu objetivo es bajar de peso").
+- Si tiene IMC fuera de rango normal, menciona brevemente su estado de peso de forma positiva y motivadora.
+- Ofrece ayuda específica basada en su perfil.
+- NO preguntes información que ya tienes arriba.
+- SIEMPRE adapta las porciones a sus calorías objetivo.
+═══════════════════════════════════════`;
 
   return BASE_SYSTEM_PROMPT + userContext;
 }
