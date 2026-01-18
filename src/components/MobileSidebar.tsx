@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Calendar, BookOpen, User, LogOut, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Calendar, BookOpen, User, LogOut, MessageSquare, ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -42,16 +42,19 @@ export function MobileSidebar() {
 
   return (
     <>
-      {/* Mobile toggle - Only show when closed */}
+      {/* Mobile toggle - Tab that slides from left edge */}
       {!isOpen && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="fixed top-4 left-4 z-50 md:hidden"
+        <button
+          className="fixed top-1/2 -translate-y-1/2 left-0 z-50 md:hidden
+            bg-primary/90 hover:bg-primary text-primary-foreground
+            py-4 px-1 rounded-r-lg shadow-lg
+            transition-all duration-200 hover:px-2
+            flex items-center justify-center"
           onClick={() => setIsOpen(true)}
+          aria-label="Abrir menú"
         >
-          <Menu className="h-5 w-5" />
-        </Button>
+          <ChevronRight className="h-5 w-5" />
+        </button>
       )}
 
       {/* Mobile sidebar */}
