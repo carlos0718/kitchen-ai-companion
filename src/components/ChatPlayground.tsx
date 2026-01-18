@@ -167,7 +167,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
                       key={suggestion}
                       variant="outline"
                       onClick={() => handleSendMessage(suggestion)}
-                      className="text-sm"
+                      className="text-sm border-primary/30 hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-colors"
                     >
                       {suggestion}
                     </Button>

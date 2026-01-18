@@ -116,8 +116,7 @@ export function useSubscription() {
             table: 'user_subscriptions',
             filter: `user_id=eq.${userId}`,
           },
-          (payload) => {
-            console.log('[REALTIME] Subscription changed:', payload);
+          () => {
             // Refresh subscription data when changes are detected
             checkSubscription();
           }
@@ -144,7 +143,6 @@ export function useSubscription() {
       }
 
       const gateway = detectionResponse.data?.gateway || 'stripe';
-      console.log('[CHECKOUT] Using payment gateway:', gateway);
 
       if (gateway === 'mercadopago') {
         // Use Mercado Pago Subscriptions API (recurring payments)

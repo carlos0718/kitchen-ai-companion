@@ -14,28 +14,20 @@ interface UsageBadgeProps {
 export function UsageBadge({ remaining, weeklyLimit, isPremium, onClick }: UsageBadgeProps) {
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const handleBadgeClick = () => {
-    // En móvil abrimos el popover, en desktop ejecutamos onClick si existe
-    if (window.innerWidth < 768) {
-      setPopoverOpen(true);
-    } else if (onClick) {
-      onClick();
-    }
-  };
-
   if (isPremium) {
     return (
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
-          <Badge
-            variant="default"
-            className="cursor-pointer flex items-center gap-1"
-            onClick={handleBadgeClick}
-          >
-            <Crown className="h-3 w-3" />
-            <span className="hidden md:inline">Premium</span>
-            <span className="md:hidden">Pro</span>
-          </Badge>
+          <button type="button" className="focus:outline-none">
+            <Badge
+              variant="default"
+              className="cursor-pointer flex items-center gap-1"
+            >
+              <Crown className="h-3 w-3" />
+              <span className="hidden md:inline">Premium</span>
+              <span className="md:hidden">Pro</span>
+            </Badge>
+          </button>
         </PopoverTrigger>
         <PopoverContent className="w-72 p-4" align="end">
           <div className="space-y-3">
@@ -69,15 +61,16 @@ export function UsageBadge({ remaining, weeklyLimit, isPremium, onClick }: Usage
   return (
     <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
       <PopoverTrigger asChild>
-        <Badge
-          variant={isEmpty ? 'destructive' : isLow ? 'secondary' : 'outline'}
-          className="cursor-pointer flex items-center gap-1"
-          onClick={handleBadgeClick}
-        >
-          <Zap className="h-3 w-3" />
-          <span>{remaining}/{weeklyLimit}</span>
-          <span className="hidden md:inline">semanales</span>
-        </Badge>
+        <button type="button" className="focus:outline-none">
+          <Badge
+            variant={isEmpty ? 'destructive' : isLow ? 'secondary' : 'outline'}
+            className="cursor-pointer flex items-center gap-1"
+          >
+            <Zap className="h-3 w-3" />
+            <span>{remaining}/{weeklyLimit}</span>
+            <span className="hidden md:inline">semanales</span>
+          </Badge>
+        </button>
       </PopoverTrigger>
       <PopoverContent className="w-72 p-4" align="end">
         <div className="space-y-3">

@@ -60,12 +60,9 @@ export function BillingHistory() {
       // Ensure there's an active session before calling the function
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        console.log('[BILLING] No active session, skipping invoice fetch');
         setInvoices([]);
         return;
       }
-
-      console.log('[BILLING] Calling get-invoices - let Supabase client handle auth');
 
       // Let the Supabase client handle authorization automatically
       const { data, error: invoiceError } = await supabase.functions.invoke('get-invoices');

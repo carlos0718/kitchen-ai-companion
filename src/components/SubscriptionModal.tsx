@@ -144,7 +144,6 @@ export function SubscriptionModal({
           if (data.exchangeRate) {
             setExchangeRate(data.exchangeRate);
           }
-          console.log('[SUBSCRIPTION MODAL] Detected:', data);
         }
       } catch (error) {
         console.error('Error detecting country:', error);

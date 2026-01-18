@@ -81,14 +81,6 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
       const weekStartStr = weekStart.toISOString().split('T')[0];
       const weekEndStr = weekEnd.toISOString().split('T')[0];
 
-      console.log('🔍 loadMealPlan searching for:', {
-        userId,
-        weekStartStr,
-        weekEndStr,
-        weekStart,
-        weekEnd
-      });
-
       // Check if meal plan exists for this week
       let { data: existingPlan, error: planError } = await supabase
         .from('meal_plans')
@@ -96,8 +88,6 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
         .eq('user_id', userId)
         .eq('week_start_date', weekStartStr)
         .single();
-
-      console.log('🔍 Meal plan query result:', { existingPlan, planError });
 
       // If doesn't exist, create it
       if (planError && planError.code === 'PGRST116') {
@@ -122,8 +112,6 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
 
       // Load meal plan items with recipes
       if (existingPlan) {
-        console.log('🔍 Loading meal items for plan:', existingPlan.id);
-
         const { data: items, error: itemsError } = await supabase
           .from('meal_plan_items')
           .select(`
@@ -134,12 +122,8 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
           .order('date', { ascending: true })
           .order('meal_type', { ascending: true });
 
-        console.log('🔍 Meal items query result:', { items, itemsError, count: items?.length });
-
         if (itemsError) throw itemsError;
         setMealPlanItems(items || []);
-      } else {
-        console.log('⚠️ No meal plan found, items will be empty');
       }
     } catch (error: any) {
       console.error('Error loading meal plan:', error);
@@ -359,14 +343,6 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
       // Calculate day offset from Monday (0 = Monday, 6 = Sunday)
       const dayOffset = Math.floor((targetDate.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
 
-      console.log('Generating daily plan with params:', {
-        user_id: userId,
-        week_start_date: weekStartStr,
-        target_date: dateStr,
-        dayOffset,
-        daysToGenerate: 1,
-      });
-
       toast.info('Generando plan para hoy con IA...');
 
       const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-meal-plan`;
@@ -384,8 +360,6 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
           daysToGenerate: 1, // Generate only 1 day
         }),
       });
-
-      console.log('Edge function response status:', response.status);
 
       if (!response.ok) {
         let errorData;
@@ -412,7 +386,6 @@ export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
       }
 
       const data = await response.json();
-      console.log('Edge function data:', data);
 
       if (data && data.success) {
         toast.success(`¡Plan generado! ${data.meals_generated} comidas creadas`);
