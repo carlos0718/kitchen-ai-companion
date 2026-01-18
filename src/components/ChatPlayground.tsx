@@ -25,7 +25,10 @@ const SUGGESTIONS = [
 ];
 
 export function ChatPlayground({ userId }: ChatPlaygroundProps) {
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(() => {
+    // Recuperar conversationId de localStorage al montar
+    return localStorage.getItem(`chat_conversation_${userId}`) || null;
+  });
   const [showSubscription, setShowSubscription] = useState(false);
   const { messages, isLoading, error, sendMessage, loadMessages, clearMessages } = useChat({
     conversationId: currentConversationId || undefined,
@@ -35,6 +38,41 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
   const { remaining, weeklyLimit, canQuery, incrementUsage, checkUsage } = useUsage();
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Cargar la última conversación del usuario al montar
+  useEffect(() => {
+    const loadLastConversation = async () => {
+      // Si ya hay una conversación guardada, cargar sus mensajes
+      if (currentConversationId) {
+        await loadMessages(currentConversationId);
+        return;
+      }
+
+      // Si no, buscar la última conversación del usuario
+      const { data: lastConversation } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (lastConversation) {
+        setCurrentConversationId(lastConversation.id);
+        localStorage.setItem(`chat_conversation_${userId}`, lastConversation.id);
+        await loadMessages(lastConversation.id);
+      }
+    };
+
+    loadLastConversation();
+  }, [userId]);
+
+  // Guardar conversationId en localStorage cuando cambie
+  useEffect(() => {
+    if (currentConversationId) {
+      localStorage.setItem(`chat_conversation_${userId}`, currentConversationId);
+    }
+  }, [currentConversationId, userId]);
 
   // Check for success/canceled URL params
   useEffect(() => {
