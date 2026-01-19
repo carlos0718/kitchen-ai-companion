@@ -139,10 +139,15 @@ export function useSubscription() {
 
       if (detectionResponse.error) {
         console.error('Error detecting country:', detectionResponse.error);
-        // Default to Stripe if detection fails
       }
 
-      const gateway = detectionResponse.data?.gateway || 'stripe';
+      // Check if payment is available in this country
+      const isAvailable = detectionResponse.data?.available !== false;
+      if (!isAvailable) {
+        throw new Error('Los pagos solo están disponibles en Argentina por el momento. Estamos trabajando para expandirnos a más países.');
+      }
+
+      const gateway = detectionResponse.data?.gateway;
 
       if (gateway === 'mercadopago') {
         // Use Mercado Pago Subscriptions API (recurring payments)
@@ -158,18 +163,8 @@ export function useSubscription() {
           window.open(response.data.init_point, '_blank');
         }
       } else {
-        // Use Stripe for international users
-        const response = await supabase.functions.invoke('create-checkout', {
-          body: { plan },
-        });
-
-        if (response.error) {
-          throw new Error(response.error.message);
-        }
-
-        if (response.data?.url) {
-          window.open(response.data.url, '_blank');
-        }
+        // Payment gateway not available
+        throw new Error('No hay método de pago disponible para tu ubicación.');
       }
     } catch (error) {
       console.error('Error creating checkout:', error);

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Check, Crown, Sparkles, Loader2, X, TrendingDown, Star, CreditCard } from 'lucide-react';
+import { Check, Crown, Sparkles, Loader2, X, TrendingDown, Star, CreditCard, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -119,10 +119,12 @@ export function SubscriptionModal({
   const [loading, setLoading] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showCanceled, setShowCanceled] = useState(false);
-  const [currency, setCurrency] = useState<'USD' | 'ARS'>('ARS');
-  const [gateway, setGateway] = useState<'stripe' | 'mercadopago'>('mercadopago');
+  const [currency, setCurrency] = useState<'USD' | 'ARS'>('USD');
+  const [gateway, setGateway] = useState<'stripe' | 'mercadopago' | null>('mercadopago');
   const [exchangeRate, setExchangeRate] = useState<number | undefined>(undefined);
   const [detectingCountry, setDetectingCountry] = useState(true);
+  const [paymentAvailable, setPaymentAvailable] = useState(true);
+  const [detectedCountry, setDetectedCountry] = useState<string>('AR');
 
   // Detect country and payment gateway when modal opens
   useEffect(() => {
@@ -135,20 +137,27 @@ export function SubscriptionModal({
 
         if (error) {
           console.error('Error detecting country:', error);
-          // Default to ARS/Mercado Pago
+          // Default to Argentina/MercadoPago as fallback
           setCurrency('ARS');
           setGateway('mercadopago');
+          setPaymentAvailable(true);
+          setDetectedCountry('AR');
         } else {
-          setCurrency(data.currency || 'ARS');
-          setGateway(data.gateway || 'mercadopago');
+          setCurrency(data.currency || 'USD');
+          setGateway(data.gateway || null);
+          setPaymentAvailable(data.available !== false);
+          setDetectedCountry(data.country || 'US');
           if (data.exchangeRate) {
             setExchangeRate(data.exchangeRate);
           }
         }
       } catch (error) {
         console.error('Error detecting country:', error);
+        // Default to Argentina/MercadoPago as fallback
         setCurrency('ARS');
         setGateway('mercadopago');
+        setPaymentAvailable(true);
+        setDetectedCountry('AR');
       } finally {
         setDetectingCountry(false);
       }
@@ -232,7 +241,7 @@ export function SubscriptionModal({
           <DialogDescription className="text-base">
             Elige el plan que mejor se adapte a tus necesidades culinarias
           </DialogDescription>
-          {!detectingCountry && (
+          {!detectingCountry && paymentAvailable && (
             <div className="flex items-center gap-2 pt-2">
               <Badge variant="outline" className="gap-1.5">
                 <CreditCard className="h-3 w-3" />
@@ -240,6 +249,14 @@ export function SubscriptionModal({
               </Badge>
               <Badge variant="secondary">
                 {currency === 'ARS' ? 'Precios en Pesos Argentinos' : 'Precios en USD'}
+              </Badge>
+            </div>
+          )}
+          {!detectingCountry && !paymentAvailable && (
+            <div className="flex items-center gap-2 pt-2">
+              <Badge variant="destructive" className="gap-1.5">
+                <MapPin className="h-3 w-3" />
+                No disponible en tu ubicación
               </Badge>
             </div>
           )}
@@ -284,8 +301,29 @@ export function SubscriptionModal({
 
           {/* Plans Tab */}
           <TabsContent value="plans" className="mt-6">
+            {/* Unavailable in Country Banner */}
+            {!detectingCountry && !paymentAvailable && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mb-6 p-4 bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-5 w-5 text-red-600" />
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      Pagos no disponibles en tu ubicación
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Actualmente solo aceptamos pagos desde Argentina. Estamos trabajando para expandirnos a más países pronto.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
             {/* Savings Banner */}
-            {currentPlan === 'free' && !detectingCountry && (
+            {currentPlan === 'free' && !detectingCountry && paymentAvailable && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -428,18 +466,20 @@ export function SubscriptionModal({
                           ) : isPaid ? (
                             <Button
                               className={`w-full ${
-                                plan.popular
+                                plan.popular && paymentAvailable
                                   ? 'bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90'
                                   : ''
                               }`}
                               onClick={() => handleSubscribe(plan.id as 'weekly' | 'monthly')}
-                              disabled={loading !== null}
+                              disabled={loading !== null || !paymentAvailable}
                             >
                               {loading === plan.id ? (
                                 <>
                                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                   Procesando...
                                 </>
+                              ) : !paymentAvailable ? (
+                                'No disponible'
                               ) : (
                                 <>
                                   Suscribirse
@@ -532,7 +572,7 @@ export function SubscriptionModal({
                 </div>
 
                 {/* CTA Section */}
-                {currentPlan === 'free' && (
+                {currentPlan === 'free' && paymentAvailable && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -568,6 +608,21 @@ export function SubscriptionModal({
                         <TrendingDown className="h-4 w-4 ml-2" />
                       </Button>
                     </div>
+                  </motion.div>
+                )}
+                {currentPlan === 'free' && !paymentAvailable && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="mt-6 p-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-lg border border-red-500/20"
+                  >
+                    <h3 className="text-lg font-semibold mb-2">
+                      Pagos no disponibles
+                    </h3>
+                    <p className="text-muted-foreground">
+                      Actualmente solo aceptamos pagos desde Argentina. Estamos trabajando para expandirnos a más países pronto.
+                    </p>
                   </motion.div>
                 )}
               </CardContent>
