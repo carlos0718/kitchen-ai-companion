@@ -48,9 +48,9 @@ serve(async (req) => {
       .eq('user_id', user.id)
       .single();
 
-    // If user has a Mercado Pago subscription, handle it separately
-    if (dbSubscription && dbSubscription.payment_gateway === 'mercadopago') {
-      console.log("[CHECK-SUBSCRIPTION] Found Mercado Pago subscription");
+    // If user has a Mercado Pago or manual subscription, handle it separately
+    if (dbSubscription && (dbSubscription.payment_gateway === 'mercadopago' || dbSubscription.payment_gateway === 'manual')) {
+      console.log("[CHECK-SUBSCRIPTION] Found", dbSubscription.payment_gateway, "subscription");
 
       // Check if subscription has expired
       const now = new Date();
