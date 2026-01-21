@@ -185,27 +185,27 @@ export function Profile() {
 												<SelectValue placeholder='Selecciona tu país' />
 											</SelectTrigger>
 											<SelectContent>
-												<SelectItem value='argentina'>Argentina</SelectItem>
-												<SelectItem value='bolivia'>Bolivia</SelectItem>
-												<SelectItem value='chile'>Chile</SelectItem>
-												<SelectItem value='colombia'>Colombia</SelectItem>
-												<SelectItem value='costa_rica'>Costa Rica</SelectItem>
-												<SelectItem value='cuba'>Cuba</SelectItem>
-												<SelectItem value='ecuador'>Ecuador</SelectItem>
-												<SelectItem value='el_salvador'>El Salvador</SelectItem>
-												<SelectItem value='españa'>España</SelectItem>
-												<SelectItem value='guatemala'>Guatemala</SelectItem>
-												<SelectItem value='honduras'>Honduras</SelectItem>
-												<SelectItem value='mexico'>México</SelectItem>
-												<SelectItem value='nicaragua'>Nicaragua</SelectItem>
-												<SelectItem value='panama'>Panamá</SelectItem>
-												<SelectItem value='paraguay'>Paraguay</SelectItem>
-												<SelectItem value='peru'>Perú</SelectItem>
-												<SelectItem value='puerto_rico'>Puerto Rico</SelectItem>
-												<SelectItem value='republica_dominicana'>República Dominicana</SelectItem>
-												<SelectItem value='uruguay'>Uruguay</SelectItem>
-												<SelectItem value='venezuela'>Venezuela</SelectItem>
-												<SelectItem value='otro'>Otro</SelectItem>
+												<SelectItem value='AR'>Argentina</SelectItem>
+												<SelectItem value='BO'>Bolivia</SelectItem>
+												<SelectItem value='CL'>Chile</SelectItem>
+												<SelectItem value='CO'>Colombia</SelectItem>
+												<SelectItem value='CR'>Costa Rica</SelectItem>
+												<SelectItem value='CU'>Cuba</SelectItem>
+												<SelectItem value='EC'>Ecuador</SelectItem>
+												<SelectItem value='SV'>El Salvador</SelectItem>
+												<SelectItem value='ES'>España</SelectItem>
+												<SelectItem value='GT'>Guatemala</SelectItem>
+												<SelectItem value='HN'>Honduras</SelectItem>
+												<SelectItem value='MX'>México</SelectItem>
+												<SelectItem value='NI'>Nicaragua</SelectItem>
+												<SelectItem value='PA'>Panamá</SelectItem>
+												<SelectItem value='PY'>Paraguay</SelectItem>
+												<SelectItem value='PE'>Perú</SelectItem>
+												<SelectItem value='PR'>Puerto Rico</SelectItem>
+												<SelectItem value='DO'>República Dominicana</SelectItem>
+												<SelectItem value='UY'>Uruguay</SelectItem>
+												<SelectItem value='VE'>Venezuela</SelectItem>
+												<SelectItem value='US'>Estados Unidos</SelectItem>
 											</SelectContent>
 										</Select>
 									</div>

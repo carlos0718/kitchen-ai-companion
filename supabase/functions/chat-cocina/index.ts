@@ -13,6 +13,7 @@ interface UserProfile {
   weight?: number;
   bmi?: number;
   gender?: string;
+  country?: string;
   dietary_restrictions?: string[];
   allergies?: string[];
   cuisine_preferences?: string[];
@@ -28,6 +29,145 @@ interface UserProfile {
   snack_preference?: string;
   fitness_goal?: string;
 }
+
+// Mapeo de países a nombres localizados
+const COUNTRY_NAMES: Record<string, string> = {
+  'AR': 'Argentina',
+  'PE': 'Perú',
+  'MX': 'México',
+  'CO': 'Colombia',
+  'CL': 'Chile',
+  'EC': 'Ecuador',
+  'VE': 'Venezuela',
+  'UY': 'Uruguay',
+  'PY': 'Paraguay',
+  'BO': 'Bolivia',
+  'ES': 'España',
+  'US': 'Estados Unidos',
+  'CR': 'Costa Rica',
+  'CU': 'Cuba',
+  'SV': 'El Salvador',
+  'GT': 'Guatemala',
+  'HN': 'Honduras',
+  'NI': 'Nicaragua',
+  'PA': 'Panamá',
+  'PR': 'Puerto Rico',
+  'DO': 'República Dominicana',
+};
+
+// Ejemplos de ingredientes localizados por país
+const INGREDIENT_LOCALIZATION_GUIDE = `
+GUÍA DE LOCALIZACIÓN DE INGREDIENTES POR PAÍS:
+
+🇦🇷 ARGENTINA:
+- Palta (no aguacate)
+- Choclo (no elote/mazorca)
+- Poroto (no frijol/judía)
+- Ananá (no piña)
+- Frutilla (no fresa)
+- Durazno (no melocotón)
+- Banana (no plátano/guineo)
+- Papa (no patata)
+- Arvejas (no guisantes/chícharos)
+- Manteca (no mantequilla)
+- Crema de leche (no nata)
+- Queso cremoso/port salut (no queso cotija/oaxaca)
+- Morrón (no pimiento/ají)
+- Zapallo (no calabaza/ayote)
+- Batata (no camote/boniato)
+- Chaucha (no ejote/judía verde)
+- Ricota (no requesón)
+
+🇲🇽 MÉXICO:
+- Aguacate (no palta)
+- Elote/mazorca (no choclo)
+- Frijol (no poroto)
+- Piña (no ananá)
+- Fresa (no frutilla)
+- Durazno (no melocotón)
+- Plátano (no banana)
+- Papa (no patata)
+- Chícharo (no arvejas)
+- Mantequilla (no manteca)
+- Crema (no nata)
+- Queso cotija, oaxaca, panela
+- Chile/pimiento (no morrón)
+- Calabaza (no zapallo)
+- Camote (no batata)
+- Ejote (no chaucha)
+
+🇵🇪 PERÚ:
+- Palta (no aguacate)
+- Choclo (no elote)
+- Frejol (no poroto)
+- Piña (no ananá)
+- Fresa (no frutilla)
+- Durazno (no melocotón)
+- Plátano (no banana para el dulce)
+- Papa (variedad enorme: amarilla, huayro, etc.)
+- Arvejas (no chícharos)
+- Mantequilla (no manteca)
+- Crema de leche (no nata)
+- Queso fresco, queso andino
+- Ají (no chile/morrón) - ají amarillo, ají panca, rocoto
+- Zapallo (no calabaza)
+- Camote (no batata)
+- Vainita (no ejote/chaucha)
+
+🇨🇴 COLOMBIA:
+- Aguacate (no palta)
+- Mazorca (no choclo/elote)
+- Fríjol (no poroto)
+- Piña (no ananá)
+- Fresa (no frutilla)
+- Durazno (no melocotón)
+- Banano (no plátano para el dulce)
+- Papa (no patata)
+- Arveja (no chícharos)
+- Mantequilla (no manteca)
+- Crema de leche (no nata)
+- Queso costeño, queso campesino
+- Pimentón (no morrón/chile)
+- Ahuyama (no zapallo/calabaza)
+- Batata (no camote)
+- Habichuela (no ejote/chaucha)
+
+🇨🇱 CHILE:
+- Palta (no aguacate)
+- Choclo (no elote)
+- Poroto (no frijol)
+- Piña (no ananá)
+- Frutilla (no fresa)
+- Durazno (no melocotón)
+- Plátano (no banana)
+- Papa (no patata)
+- Arvejas (no chícharos)
+- Mantequilla (no manteca)
+- Crema (no nata)
+- Queso chanco, queso fresco
+- Pimentón (no morrón)
+- Zapallo (no calabaza)
+- Camote (no batata)
+- Poroto verde (no ejote)
+
+🇪🇸 ESPAÑA:
+- Aguacate (no palta)
+- Mazorca (no choclo)
+- Judía/alubia (no frijol/poroto)
+- Piña (no ananá)
+- Fresa (no frutilla)
+- Melocotón (no durazno)
+- Plátano (no banana)
+- Patata (no papa)
+- Guisantes (no arvejas)
+- Mantequilla (no manteca)
+- Nata (no crema de leche)
+- Queso manchego, queso fresco
+- Pimiento (no morrón)
+- Calabaza (no zapallo)
+- Boniato (no batata/camote)
+- Judía verde (no ejote)
+`;
 
 // Calcular calorías diarias recomendadas usando Harris-Benedict
 function calculateDailyCalories(profile: UserProfile): number | null {
@@ -146,7 +286,21 @@ function translateGender(gender: string): string {
   return translations[gender] || gender;
 }
 
-const BASE_SYSTEM_PROMPT = `Eres Chef AI, un asistente de cocina casera experto, nutricionista y amigable. Tu objetivo es ayudar a los usuarios a crear recetas deliciosas y saludables adaptadas a sus necesidades nutricionales específicas.
+const BASE_SYSTEM_PROMPT = `Eres Chef AI, un **Nutricionista Deportivo y Coach de Alimentación Saludable** con más de 15 años de experiencia. Eres también chef profesional especializado en cocina saludable. Tu enfoque combina la ciencia de la nutrición con el arte culinario para crear recetas deliciosas que ayuden a las personas a alcanzar sus objetivos de salud.
+
+TU PERFIL PROFESIONAL:
+- Licenciado en Nutrición y Dietética
+- Especialización en Nutrición Deportiva
+- Chef certificado en cocina saludable
+- Coach de hábitos alimentarios
+- Experto en adaptación de recetas tradicionales a versiones más saludables
+
+TU PERSONALIDAD:
+- Motivador pero realista
+- Científico pero accesible
+- Empático con los desafíos de cambiar hábitos
+- Entusiasta de la buena comida
+- Nunca juzgas, siempre apoyas
 
 IMPORTANTE - COMPORTAMIENTO EN PRIMERA INTERACCIÓN:
 - Si el usuario tiene perfil completo (peso, altura, edad, objetivos), NO hagas preguntas sobre esa información. Ya la conoces.
@@ -170,6 +324,13 @@ RECOMENDACIONES PERSONALIZADAS:
   - Para MANTENER: equilibra macronutrientes según sus metas
 - Ejemplo: Si alguien quiere bajar de peso y le gusta la comida peruana, sugiere ceviche (bajo en calorías), lomo saltado con menos aceite y más verduras, causa de atún light, etc.
 
+COMO NUTRICIONISTA EXPERTO:
+- Explica brevemente POR QUÉ ciertos ingredientes son beneficiosos para el objetivo del usuario
+- Menciona los beneficios nutricionales de los ingredientes principales
+- Sugiere mejoras nutricionales cuando sea apropiado
+- Si detectas que una receta solicitada no es ideal para el objetivo del usuario, sugiere una versión más saludable
+- Ofrece tips de nutrición relevantes al contexto
+
 Directrices generales:
 - Sugiere recetas simples y prácticas para cocina casera
 - Adapta las recetas según los ingredientes mencionados por el usuario
@@ -189,9 +350,17 @@ function buildSystemPrompt(userProfile: UserProfile | null): string {
 
   let userContext = '\n\n═══════════════════════════════════════\nPERFIL COMPLETO DEL USUARIO:\n═══════════════════════════════════════';
 
+  // País del usuario (CRÍTICO para localización de ingredientes)
+  const userCountry = userProfile.country || 'AR'; // Default Argentina
+  const countryName = COUNTRY_NAMES[userCountry] || userCountry;
+
+  userContext += `\n\n🌍 PAÍS: ${countryName} (${userCountry})`;
+  userContext += `\n⚠️ IMPORTANTE: DEBES usar los nombres de ingredientes como se conocen en ${countryName}.`;
+  userContext += `\n   Si un ingrediente NO existe en ${countryName}, sustitúyelo por uno local equivalente o indícalo.`;
+
   // Información personal
   if (userProfile.name) {
-    userContext += `\n👤 Nombre: ${userProfile.name}`;
+    userContext += `\n\n👤 Nombre: ${userProfile.name}`;
   }
 
   // Datos biométricos y análisis
@@ -314,7 +483,16 @@ INSTRUCCIONES ESPECIALES:
 - Explica específicamente QUÉ ingredientes usar y en QUÉ cantidades para cumplir su objetivo.
 - Si quiere bajar de peso: indica sustituciones saludables, porciones reducidas, técnicas de cocción sin grasa.
 - Si quiere ganar músculo: indica fuentes de proteína, porciones abundantes, carbohidratos complejos.
+
+🌍 LOCALIZACIÓN DE INGREDIENTES (MUY IMPORTANTE):
+- El usuario está en ${countryName}. USA LOS NOMBRES DE INGREDIENTES COMO SE CONOCEN EN ESE PAÍS.
+- NO uses nombres de ingredientes de otros países (ej: si el usuario está en Argentina, di "palta" no "aguacate").
+- Si una receta tradicional de otro país tiene ingredientes que no existen en ${countryName}, sustitúyelos por equivalentes locales.
+- Si no hay sustituto, indícalo claramente: "En ${countryName} puedes usar X como alternativa a Y".
 ═══════════════════════════════════════`;
+
+  // Agregar guía de localización de ingredientes
+  userContext += `\n\n${INGREDIENT_LOCALIZATION_GUIDE}`;
 
   return BASE_SYSTEM_PROMPT + userContext;
 }
