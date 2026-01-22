@@ -126,8 +126,11 @@ export function MobileSidebar() {
                       return (
                         <Button
                           key={subItem.path}
-                          variant={isActive ? 'secondary' : 'ghost'}
-                          className="w-full justify-start text-sm"
+                          variant="ghost"
+                          className={cn(
+                            "w-full justify-start text-sm",
+                            isActive && "text-primary font-medium"
+                          )}
                           onClick={() => handleNavigate(subItem.path)}
                         >
                           {subItem.label}
