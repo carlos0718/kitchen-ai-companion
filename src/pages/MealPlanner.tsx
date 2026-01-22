@@ -9,7 +9,9 @@ import { RenewalBanner } from '@/components/RenewalBanner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, ChevronLeft, ChevronRight, Sparkles, ShoppingCart, Lock } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Loader2, ChevronLeft, ChevronRight, Sparkles, ShoppingCart, Lock, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
 const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -53,6 +55,7 @@ export function MealPlanner() {
   const [showRecipeDialog, setShowRecipeDialog] = useState(false);
   const [snackPreference, setSnackPreference] = useState<string>('3meals');
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showShoppingListPopover, setShowShoppingListPopover] = useState(false);
 
   // Subscription hook
   const {
@@ -228,6 +231,90 @@ export function MealPlanner() {
     }
   };
 
+  // Generate and download/print shopping list
+  const handleDownloadShoppingList = () => {
+    if (mealPlanItems.length === 0) return;
+
+    // Collect all ingredients from meal plan items
+    const ingredientsMap = new Map<string, { amount: number; unit: string; recipes: string[] }>();
+
+    mealPlanItems.forEach((item) => {
+      if (item.recipe?.ingredients) {
+        const ingredients = Array.isArray(item.recipe.ingredients)
+          ? item.recipe.ingredients
+          : [];
+
+        ingredients.forEach((ing: { name?: string; amount?: number; unit?: string }) => {
+          if (ing.name) {
+            const key = `${ing.name.toLowerCase()}-${ing.unit || ''}`;
+            const existing = ingredientsMap.get(key);
+            if (existing) {
+              existing.amount += ing.amount || 0;
+              if (!existing.recipes.includes(item.recipe.name)) {
+                existing.recipes.push(item.recipe.name);
+              }
+            } else {
+              ingredientsMap.set(key, {
+                amount: ing.amount || 0,
+                unit: ing.unit || '',
+                recipes: [item.recipe.name],
+              });
+            }
+          }
+        });
+      }
+    });
+
+    // Create printable HTML
+    const dateRange = `${weekStart.toLocaleDateString('es-AR', { month: 'long', day: 'numeric' })} - ${weekEnd.toLocaleDateString('es-AR', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+
+    const ingredientsList = Array.from(ingredientsMap.entries())
+      .map(([key, value]) => {
+        const name = key.split('-')[0];
+        return `<li style="margin-bottom: 8px;">
+          <strong>${name.charAt(0).toUpperCase() + name.slice(1)}</strong>
+          ${value.amount ? ` - ${value.amount} ${value.unit}` : ''}
+          <br><small style="color: #666;">Para: ${value.recipes.join(', ')}</small>
+        </li>`;
+      })
+      .join('');
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Lista de Compras - ${dateRange}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+            h1 { color: #0f9b6d; border-bottom: 2px solid #0f9b6d; padding-bottom: 10px; }
+            h2 { color: #666; font-weight: normal; margin-top: -5px; }
+            ul { list-style-type: none; padding: 0; }
+            li { padding: 8px 0; border-bottom: 1px solid #eee; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <h1>Lista de Compras</h1>
+          <h2>${dateRange}</h2>
+          <ul>${ingredientsList}</ul>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+
+    setShowShoppingListPopover(false);
+    toast.success('Lista de compras generada');
+  };
+
+  // Check if shopping list can be generated
+  const canGenerateShoppingList = mealPlanItems.length > 0;
+
   if (!userId || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -331,10 +418,55 @@ export function MealPlanner() {
               )}
               <span className="hidden sm:inline">Generar</span> Semana
             </Button>
-            <Button variant="secondary" size="sm" className="gap-1 md:gap-2 text-xs md:text-sm col-span-2 md:col-span-1">
-              <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
-              Lista de Compras
-            </Button>
+            {/* Desktop: Tooltip + Button */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild className="hidden md:flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canGenerateShoppingList}
+                    onClick={handleDownloadShoppingList}
+                    className="gap-1 md:gap-2 text-xs md:text-sm col-span-2 md:col-span-1 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary disabled:border-muted disabled:text-muted-foreground"
+                  >
+                    <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
+                    Lista de Compras
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Descarga los ingredientes de tu dieta en PDF</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Mobile: Popover + Button */}
+            <Popover open={showShoppingListPopover} onOpenChange={setShowShoppingListPopover}>
+              <PopoverTrigger asChild className="md:hidden">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canGenerateShoppingList}
+                  className="gap-1 text-xs col-span-2 border-primary/50 text-primary hover:bg-primary/10 hover:text-primary disabled:border-muted disabled:text-muted-foreground"
+                >
+                  <ShoppingCart className="h-3 w-3" />
+                  Lista de Compras
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64">
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Descarga los ingredientes de tu dieta semanal en formato PDF para llevar al supermercado.
+                  </p>
+                  <Button
+                    onClick={handleDownloadShoppingList}
+                    className="w-full gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Descargar PDF
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
