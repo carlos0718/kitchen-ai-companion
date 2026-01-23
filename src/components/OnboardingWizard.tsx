@@ -19,6 +19,9 @@ interface OnboardingWizardProps {
 
 type FormData = {
   name: string;
+  last_name: string;
+  country: string;
+  phone_number: string;
   age: number | null;
   height: number | null;
   weight: number | null;
@@ -134,6 +137,9 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
   } = useForm<FormData>({
     defaultValues: {
       name: '',
+      last_name: '',
+      country: '',
+      phone_number: '',
       age: null,
       height: null,
       weight: null,
@@ -250,7 +256,7 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
           }}
           className="space-y-6 mt-6"
         >
-          {/* Step 1: Bienvenida + Nombre */}
+          {/* Step 1: Bienvenida + Datos Básicos */}
           {currentStep === 1 && (
             <div className="space-y-4">
               <div className="text-center space-y-2">
@@ -259,12 +265,65 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                   Vamos a configurar tu perfil para ofrecerte las mejores recomendaciones personalizadas.
                 </p>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Nombre</Label>
+                  <Input
+                    id="name"
+                    {...register('name')}
+                    placeholder="Tu nombre"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="last_name">Apellido</Label>
+                  <Input
+                    id="last_name"
+                    {...register('last_name')}
+                    placeholder="Tu apellido"
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
-                <Label htmlFor="name">¿Cómo te llamas?</Label>
+                <Label htmlFor="country">País</Label>
+                <Select
+                  value={watch('country') || ''}
+                  onValueChange={(value) => setValue('country', value)}
+                >
+                  <SelectTrigger id="country">
+                    <SelectValue placeholder="Selecciona tu país" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AR">Argentina</SelectItem>
+                    <SelectItem value="BO">Bolivia</SelectItem>
+                    <SelectItem value="CL">Chile</SelectItem>
+                    <SelectItem value="CO">Colombia</SelectItem>
+                    <SelectItem value="CR">Costa Rica</SelectItem>
+                    <SelectItem value="CU">Cuba</SelectItem>
+                    <SelectItem value="EC">Ecuador</SelectItem>
+                    <SelectItem value="SV">El Salvador</SelectItem>
+                    <SelectItem value="ES">España</SelectItem>
+                    <SelectItem value="GT">Guatemala</SelectItem>
+                    <SelectItem value="HN">Honduras</SelectItem>
+                    <SelectItem value="MX">México</SelectItem>
+                    <SelectItem value="NI">Nicaragua</SelectItem>
+                    <SelectItem value="PA">Panamá</SelectItem>
+                    <SelectItem value="PY">Paraguay</SelectItem>
+                    <SelectItem value="PE">Perú</SelectItem>
+                    <SelectItem value="PR">Puerto Rico</SelectItem>
+                    <SelectItem value="DO">República Dominicana</SelectItem>
+                    <SelectItem value="UY">Uruguay</SelectItem>
+                    <SelectItem value="VE">Venezuela</SelectItem>
+                    <SelectItem value="US">Estados Unidos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone_number">Número de teléfono</Label>
                 <Input
-                  id="name"
-                  {...register('name')}
-                  placeholder="Tu nombre"
+                  id="phone_number"
+                  type="tel"
+                  {...register('phone_number')}
+                  placeholder="+51 999 999 999"
                 />
               </div>
             </div>
