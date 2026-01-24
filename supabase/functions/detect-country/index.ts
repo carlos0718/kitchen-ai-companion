@@ -31,7 +31,45 @@ serve(async (req) => {
     const cfCountry = req.headers.get("CF-IPCountry");
     console.log("[DETECT-COUNTRY] CF-IPCountry header:", cfCountry);
 
-    const detectedCountry = cfCountry ? cfCountry.toUpperCase() : "US";
+    let detectedCountry = cfCountry ? cfCountry.toUpperCase() : null;
+
+    // Get client's real IP from headers
+    const clientIP = req.headers.get("CF-Connecting-IP")
+      || req.headers.get("X-Forwarded-For")?.split(",")[0]?.trim()
+      || req.headers.get("X-Real-IP");
+
+    console.log("[DETECT-COUNTRY] Client IP from headers:", clientIP);
+
+    // Fallback: Use ipapi.co if Cloudflare header is not available
+    if (!detectedCountry && clientIP) {
+      console.log("[DETECT-COUNTRY] No CF-IPCountry header, using ipapi.co with client IP:", clientIP);
+      try {
+        const ipApiResponse = await fetch(`https://ipapi.co/${clientIP}/json/`, {
+          headers: { "User-Agent": "kitchen-ai-companion" },
+        });
+        if (ipApiResponse.ok) {
+          const ipData = await ipApiResponse.json();
+          if (ipData.error) {
+            console.log("[DETECT-COUNTRY] ipapi.co error response:", ipData.reason);
+            detectedCountry = "AR"; // Default to AR if IP lookup fails
+          } else {
+            detectedCountry = ipData.country_code?.toUpperCase() || "AR";
+            console.log("[DETECT-COUNTRY] ipapi.co detected:", detectedCountry, "city:", ipData.city);
+          }
+        } else {
+          console.log("[DETECT-COUNTRY] ipapi.co failed, defaulting to AR");
+          detectedCountry = "AR";
+        }
+      } catch (ipError) {
+        console.error("[DETECT-COUNTRY] ipapi.co error:", ipError);
+        detectedCountry = "AR";
+      }
+    } else if (!detectedCountry) {
+      // No CF header and no client IP - default to AR for best user experience
+      console.log("[DETECT-COUNTRY] No detection method available, defaulting to AR");
+      detectedCountry = "AR";
+    }
+
     const isArgentina = detectedCountry === "AR";
 
     // Initialize result based on country
