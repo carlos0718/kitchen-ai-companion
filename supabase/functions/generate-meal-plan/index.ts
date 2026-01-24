@@ -416,7 +416,7 @@ serve(async (req) => {
       );
       const macroDistribution = getDietMacroDistribution(dietType);
 
-      const mealCalories = (mealDistribution as Record<string, number>)[singleMealType] || 600;
+      const mealCalories = (mealDistribution as unknown as Record<string, number>)[singleMealType] || 600;
       const mealProtein = Math.round((mealCalories * macroDistribution.protein / 100) / 4);
       const mealCarbs = Math.round((mealCalories * macroDistribution.carbs / 100) / 4);
       const mealFat = Math.round((mealCalories * macroDistribution.fat / 100) / 9);
@@ -505,20 +505,35 @@ serve(async (req) => {
 
     let existingPlan = mealPlanId;
     if (!existingPlan) {
-      const { data: newPlan, error: planError } = await supabase
+      // First, check if a plan already exists for this user and week
+      const { data: existingMealPlan } = await supabase
         .from('meal_plans')
-        .insert({
-          user_id: finalUserId,
-          name: `Plan Semanal ${finalWeekStart}`,
-          week_start_date: finalWeekStart,
-          week_end_date: weekEndDate.toISOString().split('T')[0],
-          is_active: true,
-        })
-        .select()
+        .select('id')
+        .eq('user_id', finalUserId)
+        .eq('week_start_date', finalWeekStart)
         .single();
 
-      if (planError) throw planError;
-      existingPlan = newPlan.id;
+      if (existingMealPlan) {
+        // Use existing plan
+        console.log('Found existing meal plan:', existingMealPlan.id);
+        existingPlan = existingMealPlan.id;
+      } else {
+        // Create new plan
+        const { data: newPlan, error: planError } = await supabase
+          .from('meal_plans')
+          .insert({
+            user_id: finalUserId,
+            name: `Plan Semanal ${finalWeekStart}`,
+            week_start_date: finalWeekStart,
+            week_end_date: weekEndDate.toISOString().split('T')[0],
+            is_active: true,
+          })
+          .select()
+          .single();
+
+        if (planError) throw planError;
+        existingPlan = newPlan.id;
+      }
     }
 
     let mealsGenerated = 0;
@@ -531,7 +546,7 @@ serve(async (req) => {
       const dateStr = currentDate.toISOString().split('T')[0];
 
       for (const mealType of mealTypes) {
-        const mealCalories = (mealDistribution as Record<string, number>)[mealType];
+        const mealCalories = (mealDistribution as unknown as Record<string, number>)[mealType];
         const mealProtein = Math.round((mealCalories * macroDistribution.protein / 100) / 4);
         const mealCarbs = Math.round((mealCalories * macroDistribution.carbs / 100) / 4);
         const mealFat = Math.round((mealCalories * macroDistribution.fat / 100) / 9);
