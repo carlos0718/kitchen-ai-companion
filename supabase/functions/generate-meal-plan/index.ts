@@ -152,7 +152,8 @@ function buildMealPrompt(
   protein: number,
   carbs: number,
   fat: number,
-  userPreferences?: string
+  userPreferences?: string,
+  previousMeals?: string[] // Names of previously generated meals for this meal type
 ): string {
   const restrictionsText = profile.dietary_restrictions?.length
     ? profile.dietary_restrictions.join(', ')
@@ -171,6 +172,20 @@ function buildMealPrompt(
     ? `\n⭐ PREFERENCIAS ESPECIALES DEL USUARIO: ${userPreferences}\n`
     : '';
 
+  // Build variety instruction if there are previous meals
+  const varietySection = previousMeals && previousMeals.length > 0
+    ? `\n🔄 VARIEDAD IMPORTANTE: Ya se han generado las siguientes comidas para este tipo de comida en otros días de la semana:
+${previousMeals.map((meal, i) => `- Día ${i + 1}: ${meal}`).join('\n')}
+
+⚠️ DEBES generar una receta COMPLETAMENTE DIFERENTE a las anteriores. Varía:
+- El tipo de plato principal (si antes fue huevos, ahora puede ser avena o tostadas)
+- Los ingredientes principales
+- El estilo de cocina
+- La preparación
+
+NO repitas recetas similares. Cada día debe tener una experiencia gastronómica distinta.\n`
+    : '';
+
   return `Genera una receta para ${getMealTypeLabel(mealType)} que cumpla con los siguientes requisitos:
 - Tipo de dieta: ${dietTypeDescription}
 - Calorías: aproximadamente ${calories} kcal
@@ -182,8 +197,7 @@ function buildMealPrompt(
 - Preferencias de cocina: ${profile.cuisine_preferences?.join(', ') || 'variada'}
 - Porciones: ${profile.household_size} persona(s)
 - Tiempo máximo de preparación: ${profile.max_prep_time} minutos
-${profile.flexible_mode ? '- Modo flexible: Puedes ser creativo con ingredientes similares' : '- Modo estricto: Sigue exactamente las restricciones'}${preferencesSection}
-
+${profile.flexible_mode ? '- Modo flexible: Puedes ser creativo con ingredientes similares' : '- Modo estricto: Sigue exactamente las restricciones'}${preferencesSection}${varietySection}
 La receta debe ser práctica, con ingredientes accesibles y tiempo de preparación razonable.${userPreferences ? '\n\n¡IMPORTANTE! Ten en cuenta las preferencias especiales del usuario mencionadas arriba.' : ''}
 
 Responde ÚNICAMENTE con un JSON válido en este formato exacto:
@@ -538,6 +552,12 @@ serve(async (req) => {
 
     let mealsGenerated = 0;
 
+    // Track previously generated meals by meal type for variety
+    const generatedMealsByType: Record<string, string[]> = {};
+    for (const mt of mealTypes) {
+      generatedMealsByType[mt] = [];
+    }
+
     // Generate meals for each day and meal type
     // Start from startDayOffset (0 = Monday, 6 = Sunday)
     for (let day = startDayOffset; day < startDayOffset + daysToGenerate; day++) {
@@ -551,7 +571,10 @@ serve(async (req) => {
         const mealCarbs = Math.round((mealCalories * macroDistribution.carbs / 100) / 4);
         const mealFat = Math.round((mealCalories * macroDistribution.fat / 100) / 9);
 
-        const prompt = buildMealPrompt(userProfile, mealType, mealCalories, mealProtein, mealCarbs, mealFat);
+        // Pass previously generated meals for this meal type to ensure variety
+        const previousMeals = generatedMealsByType[mealType] || [];
+        console.log(`Generating ${mealType} for day ${day}. Previous meals for this type:`, previousMeals);
+        const prompt = buildMealPrompt(userProfile, mealType, mealCalories, mealProtein, mealCarbs, mealFat, undefined, previousMeals);
 
         const aiResponse = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
@@ -579,6 +602,11 @@ serve(async (req) => {
         }
 
         const recipeData = JSON.parse(jsonMatch[0]);
+
+        // Add meal name to tracker for variety in subsequent days
+        if (recipeData.name) {
+          generatedMealsByType[mealType].push(recipeData.name);
+        }
 
         // Create recipe
         const { data: recipe, error: recipeError } = await supabase
