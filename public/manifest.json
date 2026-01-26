@@ -1,0 +1,59 @@
+{
+  "name": "Chef AI - Tu Asistente de Cocina con IA",
+  "short_name": "Chef AI",
+  "description": "Asistente de cocina con inteligencia artificial que crea recetas personalizadas, planifica comidas semanales y te ayuda a alcanzar tus objetivos nutricionales.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "es",
+  "categories": ["food", "health", "lifestyle", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Chef AI - Pantalla principal"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chat con Chef AI",
+      "short_name": "Chat",
+      "description": "Habla con tu asistente de cocina",
+      "url": "/chat",
+      "icons": [{ "src": "/favicon.ico", "sizes": "96x96" }]
+    },
+    {
+      "name": "Planificador de Comidas",
+      "short_name": "Planificador",
+      "description": "Planifica tus comidas de la semana",
+      "url": "/planner",
+      "icons": [{ "src": "/favicon.ico", "sizes": "96x96" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
