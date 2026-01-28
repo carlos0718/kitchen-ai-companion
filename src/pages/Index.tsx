@@ -7,6 +7,7 @@ import { OnboardingWizard } from '@/components/OnboardingWizard';
 import { LandingHero } from '@/components/landing/LandingHero';
 import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
+import { DietsSection } from '@/components/landing/DietsSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { ChefHat } from 'lucide-react';
 
@@ -106,6 +107,10 @@ const Index = () => {
 
         <section id="features">
           <FeaturesSection />
+        </section>
+
+        <section id="diets">
+          <DietsSection />
         </section>
 
         <section id="faq">
