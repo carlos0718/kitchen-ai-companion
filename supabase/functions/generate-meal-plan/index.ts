@@ -127,6 +127,9 @@ function getDietMacroDistribution(dietType: string): MacroDistribution {
     case 'deportista':
       return { protein: 30, carbs: 45, fat: 25 };
 
+    case 'ayuno_intermitente':
+      return { protein: 25, carbs: 40, fat: 35 };
+
     case 'casera_normal':
     default:
       // Distribución estándar equilibrada

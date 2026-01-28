@@ -434,6 +434,7 @@ function translateDietType(dietType: string): string {
     "vegano": "dieta vegana",
     "deportista": "dieta alta en proteínas para deportistas",
     "mediterranea": "dieta mediterránea",
+    "ayuno_intermitente": "ayuno intermitente (comidas concentradas en ventana horaria)",
   };
   return translations[dietType] || dietType;
 }

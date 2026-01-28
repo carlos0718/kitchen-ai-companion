@@ -83,6 +83,11 @@ const DIET_TYPES = [
     label: 'Deportista/Alta Proteína',
     description: 'Optimizada para rendimiento físico (30% proteína, 45% carbos, 25% grasa)'
   },
+  {
+    id: 'ayuno_intermitente',
+    label: 'Ayuno Intermitente',
+    description: 'Alterna períodos de ayuno con ventanas de alimentación (16:8, 14:10, etc.)'
+  },
 ];
 
 const SNACK_PREFERENCES = [
