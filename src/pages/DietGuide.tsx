@@ -10,7 +10,8 @@ import {
   Apple,
   Info,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Clock
 } from "lucide-react";
 
 const DietGuide = () => {
@@ -204,6 +205,47 @@ const DietGuide = () => {
         '4meals': 'Snack post-entreno con proteína + carbos',
         '5meals': 'Distribuir 1.6-2.2g proteína/kg peso corporal'
       }
+    },
+    {
+      id: 'ayuno_intermitente',
+      name: 'Ayuno Intermitente',
+      icon: Clock,
+      color: 'bg-indigo-500',
+      description: 'Patrón alimentario que alterna períodos de ayuno con ventanas de alimentación',
+      macros: { protein: 25, carbs: 40, fat: 35 },
+      benefits: [
+        'Pérdida de grasa corporal',
+        'Mejora sensibilidad a la insulina',
+        'Autofagia celular (regeneración)',
+        'Simplifica la planificación de comidas',
+        'Mejora claridad mental',
+        'Reduce inflamación sistémica'
+      ],
+      considerations: [
+        'No recomendado para embarazadas o lactantes',
+        'Puede causar irritabilidad inicial',
+        'Requiere hidratación constante',
+        'No apto para personas con historial de trastornos alimentarios',
+        'Consultar médico si tienes diabetes'
+      ],
+      idealFor: [
+        'Pérdida de peso sostenible',
+        'Personas con agenda ocupada',
+        'Mejora de marcadores metabólicos',
+        'Quienes buscan simplicidad alimentaria',
+        'Control de resistencia a insulina'
+      ],
+      mealDistribution: {
+        '3meals': 'Protocolo 16:8 - Ayuno 16h, comer en ventana de 8h (ej: 12pm-8pm)',
+        '4meals': 'Protocolo 14:10 - Ayuno 14h, ventana de 10h con snack',
+        '5meals': 'Protocolo 12:12 - Ayuno 12h nocturno, comidas distribuidas en 12h'
+      },
+      protocols: [
+        { name: '16:8', description: 'Ayuno 16 horas, alimentación en 8 horas. El más popular y sostenible.' },
+        { name: '14:10', description: 'Ayuno 14 horas, alimentación en 10 horas. Ideal para principiantes.' },
+        { name: '5:2', description: '5 días normales, 2 días con 500-600 calorías.' },
+        { name: 'OMAD', description: 'Una comida al día. Avanzado, no recomendado sin supervisión.' }
+      ]
     }
   ];
 
@@ -327,7 +369,9 @@ const DietGuide = () => {
 
                 {/* Meal Distribution */}
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h3 className="font-semibold text-lg mb-3">Distribución de Comidas</h3>
+                  <h3 className="font-semibold text-lg mb-3">
+                    {diet.id === 'ayuno_intermitente' ? 'Ventanas de Alimentación' : 'Distribución de Comidas'}
+                  </h3>
                   <div className="space-y-2 text-sm">
                     {Object.entries(diet.mealDistribution).map(([key, value]) => (
                       <div key={key}>
@@ -339,6 +383,23 @@ const DietGuide = () => {
                     ))}
                   </div>
                 </div>
+
+                {/* Protocols section for Intermittent Fasting */}
+                {'protocols' in diet && diet.protocols && (
+                  <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                    <h3 className="font-semibold text-lg mb-3 text-indigo-900">
+                      Protocolos de Ayuno Intermitente
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(diet.protocols as Array<{name: string; description: string}>).map((protocol, idx) => (
+                        <div key={idx} className="bg-white p-3 rounded-md border border-indigo-100">
+                          <span className="font-bold text-indigo-700">{protocol.name}</span>
+                          <p className="text-sm text-gray-600 mt-1">{protocol.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           );

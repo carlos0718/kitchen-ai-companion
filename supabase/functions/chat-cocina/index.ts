@@ -1,13 +1,16 @@
+// deno-lint-ignore-file
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // CORS restringido a dominio de producción
-const ALLOWED_ORIGIN = Deno.env.get('ALLOWED_ORIGIN') || 'https://kitchen-ai-companion.vercel.app';
+const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ||
+  "https://kitchen-ai-companion.vercel.app";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // ============================================
@@ -42,16 +45,47 @@ const INJECTION_PATTERNS = [
 
 // Temas fuera del alcance del bot (cocina/nutrición)
 const OFF_TOPIC_PATTERNS = [
-  { pattern: /(?:crea|genera|escribe|programa|desarrolla|haz).*(?:código|programa|app|aplicación|software|script|bot)/i, reason: 'programación/desarrollo de software' },
-  { pattern: /(?:cómo|como).*(?:hackear|hackeo|hack|crackear)/i, reason: 'actividades de hacking' },
-  { pattern: /(?:ayuda|ayúdame).*(?:programar|codificar|desarrollar)/i, reason: 'programación' },
-  { pattern: /(?:javascript|python|java|html|css|sql|react|node|php|c\+\+|typescript)/i, reason: 'lenguajes de programación' },
-  { pattern: /(?:API|endpoint|backend|frontend|database|servidor)/i, reason: 'desarrollo técnico' },
-  { pattern: /(?:invertir|inversiones|criptomonedas|bitcoin|trading|forex|acciones)/i, reason: 'inversiones/finanzas' },
-  { pattern: /(?:diagnóstico médico|medicamento|prescripción|tratar enfermedad)/i, reason: 'consejos médicos específicos' },
-  { pattern: /(?:drogas|narcóticos|sustancias ilegales)/i, reason: 'sustancias ilegales' },
-  { pattern: /(?:armas|explosivos|veneno)/i, reason: 'contenido peligroso' },
-  { pattern: /(?:contenido adulto|pornografía|sexo)/i, reason: 'contenido adulto' },
+  {
+    pattern:
+      /(?:crea|genera|escribe|programa|desarrolla|haz).*(?:código|programa|app|aplicación|software|script|bot)/i,
+    reason: "programación/desarrollo de software",
+  },
+  {
+    pattern: /(?:cómo|como).*(?:hackear|hackeo|hack|crackear)/i,
+    reason: "actividades de hacking",
+  },
+  {
+    pattern: /(?:ayuda|ayúdame).*(?:programar|codificar|desarrollar)/i,
+    reason: "programación",
+  },
+  {
+    pattern:
+      /(?:javascript|python|java|html|css|sql|react|node|php|c\+\+|typescript)/i,
+    reason: "lenguajes de programación",
+  },
+  {
+    pattern: /(?:API|endpoint|backend|frontend|database|servidor)/i,
+    reason: "desarrollo técnico",
+  },
+  {
+    pattern:
+      /(?:invertir|inversiones|criptomonedas|bitcoin|trading|forex|acciones)/i,
+    reason: "inversiones/finanzas",
+  },
+  {
+    pattern:
+      /(?:diagnóstico médico|medicamento|prescripción|tratar enfermedad)/i,
+    reason: "consejos médicos específicos",
+  },
+  {
+    pattern: /(?:drogas|narcóticos|sustancias ilegales)/i,
+    reason: "sustancias ilegales",
+  },
+  { pattern: /(?:armas|explosivos|veneno)/i, reason: "contenido peligroso" },
+  {
+    pattern: /(?:contenido adulto|pornografía|sexo)/i,
+    reason: "contenido adulto",
+  },
 ];
 
 // Longitud máxima de mensaje
@@ -59,9 +93,9 @@ const MAX_MESSAGE_LENGTH = 4000;
 
 function sanitizeUserInput(input: string): SanitizationResult {
   // 1. Validar que sea string
-  if (typeof input !== 'string') {
+  if (typeof input !== "string") {
     return {
-      sanitized: '',
+      sanitized: "",
       isOffTopic: false,
       hasPotentialInjection: false,
     };
@@ -74,7 +108,10 @@ function sanitizeUserInput(input: string): SanitizationResult {
   let hasPotentialInjection = false;
   for (const pattern of INJECTION_PATTERNS) {
     if (pattern.test(sanitized)) {
-      console.warn('[SECURITY] Potential prompt injection detected:', pattern.toString());
+      console.warn(
+        "[SECURITY] Potential prompt injection detected:",
+        pattern.toString(),
+      );
       hasPotentialInjection = true;
       // No eliminamos el contenido, pero lo marcamos para logging
       break;
@@ -89,15 +126,18 @@ function sanitizeUserInput(input: string): SanitizationResult {
     if (pattern.test(sanitized)) {
       isOffTopic = true;
       offTopicReason = reason;
-      console.log('[SECURITY] Off-topic request detected:', reason);
+      console.log("[SECURITY] Off-topic request detected:", reason);
       break;
     }
   }
 
   // 5. Limpiar caracteres potencialmente peligrosos para el formato
-  sanitized = sanitized
-    .replace(/\0/g, '') // Null bytes
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ''); // Control characters
+  // Remover caracteres de control usando filtrado de código de caracter
+  sanitized = sanitized.split("").filter((char) => {
+    const code = char.charCodeAt(0);
+    // Permitir solo caracteres imprimibles (tab, newline, y >= 32)
+    return code === 9 || code === 10 || code === 13 || code >= 32;
+  }).join("");
 
   return {
     sanitized,
@@ -149,27 +189,27 @@ interface UserProfile {
 
 // Mapeo de países a nombres localizados
 const COUNTRY_NAMES: Record<string, string> = {
-  'AR': 'Argentina',
-  'PE': 'Perú',
-  'MX': 'México',
-  'CO': 'Colombia',
-  'CL': 'Chile',
-  'EC': 'Ecuador',
-  'VE': 'Venezuela',
-  'UY': 'Uruguay',
-  'PY': 'Paraguay',
-  'BO': 'Bolivia',
-  'ES': 'España',
-  'US': 'Estados Unidos',
-  'CR': 'Costa Rica',
-  'CU': 'Cuba',
-  'SV': 'El Salvador',
-  'GT': 'Guatemala',
-  'HN': 'Honduras',
-  'NI': 'Nicaragua',
-  'PA': 'Panamá',
-  'PR': 'Puerto Rico',
-  'DO': 'República Dominicana',
+  "AR": "Argentina",
+  "PE": "Perú",
+  "MX": "México",
+  "CO": "Colombia",
+  "CL": "Chile",
+  "EC": "Ecuador",
+  "VE": "Venezuela",
+  "UY": "Uruguay",
+  "PY": "Paraguay",
+  "BO": "Bolivia",
+  "ES": "España",
+  "US": "Estados Unidos",
+  "CR": "Costa Rica",
+  "CU": "Cuba",
+  "SV": "El Salvador",
+  "GT": "Guatemala",
+  "HN": "Honduras",
+  "NI": "Nicaragua",
+  "PA": "Panamá",
+  "PR": "Puerto Rico",
+  "DO": "República Dominicana",
 };
 
 // Ejemplos de ingredientes localizados por país
@@ -295,10 +335,12 @@ function calculateDailyCalories(profile: UserProfile): number | null {
   let bmr: number;
 
   // Fórmula de Mifflin-St Jeor (más precisa que Harris-Benedict)
-  if (profile.gender === 'male') {
-    bmr = (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) + 5;
+  if (profile.gender === "male") {
+    bmr = (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) +
+      5;
   } else {
-    bmr = (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) - 161;
+    bmr = (10 * profile.weight) + (6.25 * profile.height) - (5 * profile.age) -
+      161;
   }
 
   // Factor de actividad moderada (1.55) como default
@@ -306,9 +348,9 @@ function calculateDailyCalories(profile: UserProfile): number | null {
   let tdee = bmr * activityFactor;
 
   // Ajustar según objetivo
-  if (profile.fitness_goal === 'lose_weight') {
+  if (profile.fitness_goal === "lose_weight") {
     tdee *= 0.85; // Déficit del 15%
-  } else if (profile.fitness_goal === 'gain_muscle') {
+  } else if (profile.fitness_goal === "gain_muscle") {
     tdee *= 1.1; // Superávit del 10%
   }
 
@@ -316,7 +358,10 @@ function calculateDailyCalories(profile: UserProfile): number | null {
 }
 
 // Calcular peso ideal y rango saludable basado en altura
-function calculateIdealWeight(heightCm: number, gender: string): { ideal: number; min: number; max: number } {
+function calculateIdealWeight(
+  heightCm: number,
+  gender: string,
+): { ideal: number; min: number; max: number } {
   const heightM = heightCm / 100;
 
   // Rango saludable basado en IMC 18.5 - 24.9
@@ -325,7 +370,7 @@ function calculateIdealWeight(heightCm: number, gender: string): { ideal: number
 
   // Peso ideal usando fórmula de Devine modificada
   let idealWeight: number;
-  if (gender === 'male') {
+  if (gender === "male") {
     // Hombres: 50 + 2.3 * (altura en pulgadas - 60)
     const heightInches = heightCm / 2.54;
     idealWeight = 50 + 2.3 * (heightInches - 60);
@@ -336,36 +381,45 @@ function calculateIdealWeight(heightCm: number, gender: string): { ideal: number
   }
 
   // Asegurar que el peso ideal esté dentro del rango saludable
-  idealWeight = Math.max(minWeight, Math.min(maxWeight, Math.round(idealWeight)));
+  idealWeight = Math.max(
+    minWeight,
+    Math.min(maxWeight, Math.round(idealWeight)),
+  );
 
   return { ideal: idealWeight, min: minWeight, max: maxWeight };
 }
 
 // Clasificar IMC
-function classifyBMI(bmi: number): { status: string; emoji: string; recommendation: string } {
+function classifyBMI(
+  bmi: number,
+): { status: string; emoji: string; recommendation: string } {
   if (bmi < 18.5) {
     return {
-      status: 'bajo peso',
-      emoji: '⚠️',
-      recommendation: 'Te recomiendo aumentar gradualmente tu ingesta calórica con alimentos nutritivos.'
+      status: "bajo peso",
+      emoji: "⚠️",
+      recommendation:
+        "Te recomiendo aumentar gradualmente tu ingesta calórica con alimentos nutritivos.",
     };
   } else if (bmi < 25) {
     return {
-      status: 'peso saludable',
-      emoji: '✅',
-      recommendation: '¡Excelente! Tu peso está en un rango saludable. Enfócate en mantenerlo.'
+      status: "peso saludable",
+      emoji: "✅",
+      recommendation:
+        "¡Excelente! Tu peso está en un rango saludable. Enfócate en mantenerlo.",
     };
   } else if (bmi < 30) {
     return {
-      status: 'sobrepeso',
-      emoji: '📊',
-      recommendation: 'Podemos trabajar juntos en recetas bajas en calorías pero deliciosas para ayudarte a alcanzar tu peso ideal.'
+      status: "sobrepeso",
+      emoji: "📊",
+      recommendation:
+        "Podemos trabajar juntos en recetas bajas en calorías pero deliciosas para ayudarte a alcanzar tu peso ideal.",
     };
   } else {
     return {
-      status: 'obesidad',
-      emoji: '🎯',
-      recommendation: 'Te ayudaré con recetas saludables y balanceadas. Recuerda que pequeños cambios llevan a grandes resultados.'
+      status: "obesidad",
+      emoji: "🎯",
+      recommendation:
+        "Te ayudaré con recetas saludables y balanceadas. Recuerda que pequeños cambios llevan a grandes resultados.",
     };
   }
 }
@@ -373,37 +427,38 @@ function classifyBMI(bmi: number): { status: string; emoji: string; recommendati
 // Traducir valores del perfil
 function translateDietType(dietType: string): string {
   const translations: Record<string, string> = {
-    'casera_normal': 'comida casera tradicional',
-    'keto': 'dieta cetogénica (keto)',
-    'paleo': 'dieta paleo',
-    'vegetariano': 'dieta vegetariana',
-    'vegano': 'dieta vegana',
-    'deportista': 'dieta alta en proteínas para deportistas',
-    'mediterranea': 'dieta mediterránea'
+    "casera_normal": "comida casera tradicional",
+    "keto": "dieta cetogénica (keto)",
+    "paleo": "dieta paleo",
+    "vegetariano": "dieta vegetariana",
+    "vegano": "dieta vegana",
+    "deportista": "dieta alta en proteínas para deportistas",
+    "mediterranea": "dieta mediterránea",
   };
   return translations[dietType] || dietType;
 }
 
 function translateFitnessGoal(goal: string): string {
   const translations: Record<string, string> = {
-    'lose_weight': 'bajar de peso',
-    'gain_muscle': 'ganar masa muscular',
-    'maintain': 'mantener peso actual',
-    'eat_healthy': 'comer más saludable'
+    "lose_weight": "bajar de peso",
+    "gain_muscle": "ganar masa muscular",
+    "maintain": "mantener peso actual",
+    "eat_healthy": "comer más saludable",
   };
   return translations[goal] || goal;
 }
 
 function translateGender(gender: string): string {
   const translations: Record<string, string> = {
-    'male': 'masculino',
-    'female': 'femenino',
-    'other': 'otro'
+    "male": "masculino",
+    "female": "femenino",
+    "other": "otro",
   };
   return translations[gender] || gender;
 }
 
-const BASE_SYSTEM_PROMPT = `Eres Chef AI, un **Nutricionista Deportivo y Coach de Alimentación Saludable** con más de 15 años de experiencia. Eres también chef profesional especializado en cocina saludable. Tu enfoque combina la ciencia de la nutrición con el arte culinario para crear recetas deliciosas que ayuden a las personas a alcanzar sus objetivos de salud.
+const BASE_SYSTEM_PROMPT =
+  `Eres Chef AI, un **Nutricionista Deportivo y Coach de Alimentación Saludable** con más de 15 años de experiencia. Eres también chef profesional especializado en cocina saludable. Tu enfoque combina la ciencia de la nutrición con el arte culinario para crear recetas deliciosas que ayuden a las personas a alcanzar sus objetivos de salud.
 
 ═══════════════════════════════════════
 ⚠️ LÍMITES ESTRICTOS DE TU ROL - MUY IMPORTANTE
@@ -493,15 +548,18 @@ Responde siempre en español de forma clara, concisa y motivadora.`;
 function buildSystemPrompt(userProfile: UserProfile | null): string {
   if (!userProfile) return BASE_SYSTEM_PROMPT;
 
-  let userContext = '\n\n═══════════════════════════════════════\nPERFIL COMPLETO DEL USUARIO:\n═══════════════════════════════════════';
+  let userContext =
+    "\n\n═══════════════════════════════════════\nPERFIL COMPLETO DEL USUARIO:\n═══════════════════════════════════════";
 
   // País del usuario (CRÍTICO para localización de ingredientes)
-  const userCountry = userProfile.country || 'AR'; // Default Argentina
+  const userCountry = userProfile.country || "AR"; // Default Argentina
   const countryName = COUNTRY_NAMES[userCountry] || userCountry;
 
   userContext += `\n\n🌍 PAÍS: ${countryName} (${userCountry})`;
-  userContext += `\n⚠️ IMPORTANTE: DEBES usar los nombres de ingredientes como se conocen en ${countryName}.`;
-  userContext += `\n   Si un ingrediente NO existe en ${countryName}, sustitúyelo por uno local equivalente o indícalo.`;
+  userContext +=
+    `\n⚠️ IMPORTANTE: DEBES usar los nombres de ingredientes como se conocen en ${countryName}.`;
+  userContext +=
+    `\n   Si un ingrediente NO existe en ${countryName}, sustitúyelo por uno local equivalente o indícalo.`;
 
   // Información personal
   if (userProfile.name) {
@@ -509,7 +567,8 @@ function buildSystemPrompt(userProfile: UserProfile | null): string {
   }
 
   // Datos biométricos y análisis
-  const hasBiometrics = userProfile.age && userProfile.height && userProfile.weight;
+  const hasBiometrics = userProfile.age && userProfile.height &&
+    userProfile.weight;
   if (hasBiometrics) {
     userContext += `\n\n📊 DATOS FÍSICOS:`;
     userContext += `\n- Edad: ${userProfile.age} años`;
@@ -522,19 +581,30 @@ function buildSystemPrompt(userProfile: UserProfile | null): string {
     // Análisis de IMC y peso ideal
     if (userProfile.bmi && userProfile.height && userProfile.gender) {
       const bmiAnalysis = classifyBMI(userProfile.bmi);
-      const idealWeight = calculateIdealWeight(userProfile.height, userProfile.gender);
-      const weightDiff = userProfile.weight ? Math.round(userProfile.weight - idealWeight.ideal) : 0;
+      const idealWeight = calculateIdealWeight(
+        userProfile.height,
+        userProfile.gender,
+      );
+      const weightDiff = userProfile.weight
+        ? Math.round(userProfile.weight - idealWeight.ideal)
+        : 0;
 
       userContext += `\n\n📈 ANÁLISIS DE PESO:`;
-      userContext += `\n- IMC actual: ${userProfile.bmi.toFixed(1)} (${bmiAnalysis.status}) ${bmiAnalysis.emoji}`;
+      userContext += `\n- IMC actual: ${
+        userProfile.bmi.toFixed(1)
+      } (${bmiAnalysis.status}) ${bmiAnalysis.emoji}`;
       userContext += `\n- Peso actual: ${userProfile.weight} kg`;
       userContext += `\n- Peso ideal para tu altura: ${idealWeight.ideal} kg`;
-      userContext += `\n- Rango saludable: ${idealWeight.min} - ${idealWeight.max} kg`;
+      userContext +=
+        `\n- Rango saludable: ${idealWeight.min} - ${idealWeight.max} kg`;
 
       if (weightDiff > 0) {
-        userContext += `\n- Para alcanzar tu peso ideal necesitas perder: ${weightDiff} kg`;
+        userContext +=
+          `\n- Para alcanzar tu peso ideal necesitas perder: ${weightDiff} kg`;
       } else if (weightDiff < 0) {
-        userContext += `\n- Para alcanzar tu peso ideal necesitas ganar: ${Math.abs(weightDiff)} kg`;
+        userContext += `\n- Para alcanzar tu peso ideal necesitas ganar: ${
+          Math.abs(weightDiff)
+        } kg`;
       } else {
         userContext += `\n- ¡Estás en tu peso ideal! 🎉`;
       }
@@ -543,7 +613,9 @@ function buildSystemPrompt(userProfile: UserProfile | null): string {
     } else if (userProfile.bmi) {
       const bmiAnalysis = classifyBMI(userProfile.bmi);
       userContext += `\n\n📈 ANÁLISIS DE PESO:`;
-      userContext += `\n- IMC: ${userProfile.bmi.toFixed(1)} (${bmiAnalysis.status}) ${bmiAnalysis.emoji}`;
+      userContext += `\n- IMC: ${
+        userProfile.bmi.toFixed(1)
+      } (${bmiAnalysis.status}) ${bmiAnalysis.emoji}`;
       userContext += `\n- Recomendación: ${bmiAnalysis.recommendation}`;
     }
 
@@ -552,47 +624,74 @@ function buildSystemPrompt(userProfile: UserProfile | null): string {
     const dailyCalories = userProfile.daily_calorie_goal || calculatedCalories;
     if (dailyCalories) {
       userContext += `\n\n🔥 REQUERIMIENTO CALÓRICO:`;
-      userContext += `\n- Calorías diarias recomendadas: ~${dailyCalories} kcal/día`;
-      userContext += `\n- Por comida principal (aprox): ~${Math.round(dailyCalories / 3)} kcal`;
-      if (userProfile.snack_preference === '4meals' || userProfile.snack_preference === '5meals') {
-        const snacks = userProfile.snack_preference === '5meals' ? 2 : 1;
-        userContext += `\n- Por snack (aprox): ~${Math.round(dailyCalories * 0.1)} kcal`;
+      userContext +=
+        `\n- Calorías diarias recomendadas: ~${dailyCalories} kcal/día`;
+      userContext += `\n- Por comida principal (aprox): ~${
+        Math.round(dailyCalories / 3)
+      } kcal`;
+      if (
+        userProfile.snack_preference === "4meals" ||
+        userProfile.snack_preference === "5meals"
+      ) {
+        const numSnacks = userProfile.snack_preference === "5meals" ? 2 : 1;
+        userContext += `\n- Por snack (${numSnacks} snack${
+          numSnacks > 1 ? "s" : ""
+        }, aprox): ~${Math.round(dailyCalories * 0.1)} kcal`;
       }
     }
 
     // Macros si están definidos
-    if (userProfile.protein_goal || userProfile.carbs_goal || userProfile.fat_goal) {
+    if (
+      userProfile.protein_goal || userProfile.carbs_goal || userProfile.fat_goal
+    ) {
       userContext += `\n\n🥗 MACRONUTRIENTES OBJETIVO:`;
-      if (userProfile.protein_goal) userContext += `\n- Proteínas: ${userProfile.protein_goal}g`;
-      if (userProfile.carbs_goal) userContext += `\n- Carbohidratos: ${userProfile.carbs_goal}g`;
-      if (userProfile.fat_goal) userContext += `\n- Grasas: ${userProfile.fat_goal}g`;
+      if (userProfile.protein_goal) {
+        userContext += `\n- Proteínas: ${userProfile.protein_goal}g`;
+      }
+      if (userProfile.carbs_goal) {
+        userContext += `\n- Carbohidratos: ${userProfile.carbs_goal}g`;
+      }
+      if (userProfile.fat_goal) {
+        userContext += `\n- Grasas: ${userProfile.fat_goal}g`;
+      }
     }
   }
 
   // Objetivo de fitness
   if (userProfile.fitness_goal) {
-    userContext += `\n\n🎯 OBJETIVO: ${translateFitnessGoal(userProfile.fitness_goal).toUpperCase()}`;
+    userContext += `\n\n🎯 OBJETIVO: ${
+      translateFitnessGoal(userProfile.fitness_goal).toUpperCase()
+    }`;
   }
 
   // Tipo de dieta
   if (userProfile.diet_type) {
-    userContext += `\n\n🍽️ TIPO DE DIETA: ${translateDietType(userProfile.diet_type)}`;
+    userContext += `\n\n🍽️ TIPO DE DIETA: ${
+      translateDietType(userProfile.diet_type)
+    }`;
   }
 
   // Restricciones y alergias (CRÍTICO)
-  if (userProfile.dietary_restrictions?.length > 0) {
-    userContext += `\n\n⚠️ RESTRICCIONES DIETÉTICAS: ${userProfile.dietary_restrictions.join(', ')}`;
-    userContext += `\n   ¡NUNCA sugieras recetas que violen estas restricciones!`;
+  const restrictions = userProfile.dietary_restrictions ?? [];
+  if (restrictions.length > 0) {
+    userContext += `\n\n⚠️ RESTRICCIONES DIETÉTICAS: ${
+      restrictions.join(", ")
+    }`;
+    userContext +=
+      `\n   ¡NUNCA sugieras recetas que violen estas restricciones!`;
   }
 
-  if (userProfile.allergies?.length > 0) {
-    userContext += `\n\n🚫 ALERGIAS: ${userProfile.allergies.join(', ')}`;
-    userContext += `\n   ¡NUNCA uses estos ingredientes bajo ninguna circunstancia!`;
+  const allergies = userProfile.allergies ?? [];
+  if (allergies.length > 0) {
+    userContext += `\n\n🚫 ALERGIAS: ${allergies.join(", ")}`;
+    userContext +=
+      `\n   ¡NUNCA uses estos ingredientes bajo ninguna circunstancia!`;
   }
 
   // Preferencias
-  if (userProfile.cuisine_preferences?.length > 0) {
-    userContext += `\n\n❤️ Cocinas favoritas: ${userProfile.cuisine_preferences.join(', ')}`;
+  const cuisinePrefs = userProfile.cuisine_preferences ?? [];
+  if (cuisinePrefs.length > 0) {
+    userContext += `\n\n❤️ Cocinas favoritas: ${cuisinePrefs.join(", ")}`;
   }
 
   // Contexto del hogar
@@ -604,16 +703,23 @@ function buildSystemPrompt(userProfile: UserProfile | null): string {
     userContext += `\n- Nivel de cocina: ${userProfile.cooking_skill_level}`;
   }
   if (userProfile.max_prep_time) {
-    userContext += `\n- Tiempo máximo de preparación: ${userProfile.max_prep_time} minutos`;
+    userContext +=
+      `\n- Tiempo máximo de preparación: ${userProfile.max_prep_time} minutos`;
   }
   if (userProfile.snack_preference) {
-    const mealsText = userProfile.snack_preference === '3meals' ? '3 comidas' :
-                      userProfile.snack_preference === '4meals' ? '4 comidas (con 1 snack)' :
-                      '5 comidas (con 2 snacks)';
+    const mealsText = userProfile.snack_preference === "3meals"
+      ? "3 comidas"
+      : userProfile.snack_preference === "4meals"
+      ? "4 comidas (con 1 snack)"
+      : "5 comidas (con 2 snacks)";
     userContext += `\n- Comidas por día: ${mealsText}`;
   }
   if (userProfile.flexible_mode !== undefined) {
-    userContext += `\n- Modo flexible: ${userProfile.flexible_mode ? 'Sí (puede sugerir sustitutos)' : 'No (ingredientes exactos)'}`;
+    userContext += `\n- Modo flexible: ${
+      userProfile.flexible_mode
+        ? "Sí (puede sugerir sustitutos)"
+        : "No (ingredientes exactos)"
+    }`;
   }
 
   userContext += `\n\n═══════════════════════════════════════
@@ -642,19 +748,19 @@ INSTRUCCIONES ESPECIALES:
   return BASE_SYSTEM_PROMPT + userContext;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { messages, conversationHistory, user_id } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
     if (!GEMINI_API_KEY) {
       // No revelar detalles del error al cliente
-      console.error('GEMINI_API_KEY is not configured');
-      throw new Error('Error de configuración del servidor');
+      console.error("GEMINI_API_KEY is not configured");
+      throw new Error("Error de configuración del servidor");
     }
 
     // ============================================
@@ -663,13 +769,13 @@ serve(async (req) => {
 
     // Validar que messages sea un array
     if (!Array.isArray(messages) || messages.length === 0) {
-      throw new Error('Formato de mensaje inválido');
+      throw new Error("Formato de mensaje inválido");
     }
 
     // Obtener el último mensaje del usuario para validación
     const lastUserMessage = messages[messages.length - 1];
-    if (!lastUserMessage || typeof lastUserMessage.content !== 'string') {
-      throw new Error('Mensaje vacío o inválido');
+    if (!lastUserMessage || typeof lastUserMessage.content !== "string") {
+      throw new Error("Mensaje vacío o inválido");
     }
 
     // Sanitizar el mensaje del usuario
@@ -677,23 +783,31 @@ serve(async (req) => {
 
     // Log de seguridad (sin exponer datos sensibles)
     if (sanitizationResult.hasPotentialInjection) {
-      console.warn('[SECURITY] Potential injection attempt from user:', user_id);
+      console.warn(
+        "[SECURITY] Potential injection attempt from user:",
+        user_id,
+      );
     }
 
     // Si es un tema fuera del alcance, devolver respuesta inmediata sin llamar a Gemini
     if (sanitizationResult.isOffTopic && sanitizationResult.offTopicReason) {
-      console.log('[SECURITY] Off-topic request blocked:', sanitizationResult.offTopicReason);
+      console.log(
+        "[SECURITY] Off-topic request blocked:",
+        sanitizationResult.offTopicReason,
+      );
 
-      const offTopicResponse = getOffTopicResponse(sanitizationResult.offTopicReason);
+      const offTopicResponse = getOffTopicResponse(
+        sanitizationResult.offTopicReason,
+      );
 
       // Devolver respuesta en formato SSE para compatibilidad con el cliente
       const encoder = new TextEncoder();
       const responseData = JSON.stringify({
         candidates: [{
           content: {
-            parts: [{ text: offTopicResponse }]
-          }
-        }]
+            parts: [{ text: offTopicResponse }],
+          },
+        }],
       });
 
       return new Response(
@@ -701,25 +815,27 @@ serve(async (req) => {
         {
           headers: {
             ...corsHeaders,
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
           },
-        }
+        },
       );
     }
 
     // Reemplazar el mensaje con la versión sanitizada
-    const sanitizedMessages = messages.map((msg: { role: string; content: string }, index: number) => {
-      if (index === messages.length - 1 && msg.role === 'user') {
-        return { ...msg, content: sanitizationResult.sanitized };
-      }
-      // Sanitizar también mensajes anteriores del historial
-      if (msg.role === 'user' && typeof msg.content === 'string') {
-        return { ...msg, content: sanitizeUserInput(msg.content).sanitized };
-      }
-      return msg;
-    });
+    const sanitizedMessages = messages.map(
+      (msg: { role: string; content: string }, index: number) => {
+        if (index === messages.length - 1 && msg.role === "user") {
+          return { ...msg, content: sanitizationResult.sanitized };
+        }
+        // Sanitizar también mensajes anteriores del historial
+        if (msg.role === "user" && typeof msg.content === "string") {
+          return { ...msg, content: sanitizeUserInput(msg.content).sanitized };
+        }
+        return msg;
+      },
+    );
 
     // ============================================
     // END SECURITY
@@ -729,19 +845,19 @@ serve(async (req) => {
     let userProfile: UserProfile | null = null;
     if (user_id) {
       try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseKey);
 
         const { data: profile } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', user_id)
+          .from("user_profiles")
+          .select("*")
+          .eq("user_id", user_id)
           .single();
 
         userProfile = profile;
       } catch (error) {
-        console.error('Error loading user profile:', error);
+        console.error("Error loading user profile:", error);
         // Continue without profile
       }
     }
@@ -759,32 +875,35 @@ serve(async (req) => {
     if (systemPrompt) {
       contents.push({
         role: "user",
-        parts: [{ text: systemPrompt }]
+        parts: [{ text: systemPrompt }],
       });
       contents.push({
         role: "model",
-        parts: [{ text: "Entendido. Soy Chef AI, tu asistente de cocina. Estoy listo para ayudarte con recetas personalizadas según tus preferencias y restricciones." }]
+        parts: [{
+          text:
+            "Entendido. Soy Chef AI, tu asistente de cocina. Estoy listo para ayudarte con recetas personalizadas según tus preferencias y restricciones.",
+        }],
       });
     }
 
     // Add conversation history (sanitized)
     for (const msg of contextMessages) {
       // Sanitizar mensajes del historial que vienen del usuario
-      const content = msg.role === 'user' && typeof msg.content === 'string'
+      const content = msg.role === "user" && typeof msg.content === "string"
         ? sanitizeUserInput(msg.content).sanitized
         : msg.content;
 
       contents.push({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: content }]
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: content }],
       });
     }
 
     // Add current messages (using sanitized version)
     for (const msg of sanitizedMessages) {
       contents.push({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }],
       });
     }
 
@@ -802,7 +921,7 @@ serve(async (req) => {
             maxOutputTokens: 2048,
           },
         }),
-      }
+      },
     );
 
     if (!response.ok) {
@@ -810,16 +929,24 @@ serve(async (req) => {
       console.error("Gemini API error:", response.status, errorText);
 
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Demasiadas solicitudes. Por favor espera un momento." }), {
-          status: 429,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return new Response(
+          JSON.stringify({
+            error: "Demasiadas solicitudes. Por favor espera un momento.",
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
       }
 
-      return new Response(JSON.stringify({ error: "Error del servicio de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({ error: "Error del servicio de IA" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     // Transform Gemini SSE to OpenAI-compatible format
@@ -835,16 +962,17 @@ serve(async (req) => {
             if (done) break;
 
             const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+            const lines = chunk.split("\n");
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
+              if (line.startsWith("data: ")) {
                 const data = line.slice(6);
-                if (data === '[DONE]') continue;
+                if (data === "[DONE]") continue;
 
                 try {
                   const parsed = JSON.parse(data);
-                  const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+                  const text = parsed.candidates?.[0]?.content?.parts?.[0]
+                    ?.text;
 
                   if (text) {
                     // Convert to OpenAI format
@@ -852,17 +980,21 @@ serve(async (req) => {
                       choices: [{
                         delta: { content: text },
                         index: 0,
-                      }]
+                      }],
                     };
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify(openaiFormat)}\n\n`));
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify(openaiFormat)}\n\n`,
+                      ),
+                    );
                   }
                 } catch (e) {
-                  console.error('Error parsing Gemini response:', e);
+                  console.error("Error parsing Gemini response:", e);
                 }
               }
             }
           }
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (error) {
           controller.error(error);
@@ -879,15 +1011,15 @@ serve(async (req) => {
 
     // Mensaje genérico para el cliente (no revelar detalles internos)
     const clientMessage = error instanceof Error &&
-      (error.message === 'Formato de mensaje inválido' ||
-       error.message === 'Mensaje vacío o inválido' ||
-       error.message === 'Error de configuración del servidor')
+        (error.message === "Formato de mensaje inválido" ||
+          error.message === "Mensaje vacío o inválido" ||
+          error.message === "Error de configuración del servidor")
       ? error.message
-      : 'Ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.';
+      : "Ocurrió un error al procesar tu mensaje. Por favor intenta de nuevo.";
 
     return new Response(JSON.stringify({ error: clientMessage }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
