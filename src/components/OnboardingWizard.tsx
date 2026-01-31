@@ -21,7 +21,6 @@ type FormData = {
   name: string;
   last_name: string;
   country: string;
-  phone_number: string;
   age: number | null;
   height: number | null;
   weight: number | null;
@@ -144,7 +143,6 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
       name: '',
       last_name: '',
       country: '',
-      phone_number: '',
       age: null,
       height: null,
       weight: null,
@@ -321,15 +319,6 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                     <SelectItem value="US">Estados Unidos</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone_number">Número de teléfono</Label>
-                <Input
-                  id="phone_number"
-                  type="tel"
-                  {...register('phone_number')}
-                  placeholder="+51 999 999 999"
-                />
               </div>
             </div>
           )}

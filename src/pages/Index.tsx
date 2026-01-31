@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +9,8 @@ import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { DietsSection } from '@/components/landing/DietsSection';
 import { FAQSection } from '@/components/landing/FAQSection';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, CheckCircle } from 'lucide-react';
+import { useAuthBroadcast, isEmailConfirmationRedirect } from '@/hooks/useAuthBroadcast';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -17,13 +18,41 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const [isConfirmationTab, setIsConfirmationTab] = useState(false);
+
+  // Callback when another tab broadcasts auth confirmation
+  const handleAuthBroadcast = useCallback(() => {
+    // Refresh the session from another tab's confirmation
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setUser(session.user);
+        setLoading(false);
+      }
+    });
+  }, []);
+
+  const { broadcastAuthConfirmed } = useAuthBroadcast(handleAuthBroadcast);
 
   useEffect(() => {
+    // Check if this is an email confirmation redirect
+    const isConfirmation = isEmailConfirmationRedirect();
+    setIsConfirmationTab(isConfirmation);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // If user just signed in (from email confirmation), broadcast to other tabs
+        if (event === 'SIGNED_IN' && session?.user && isConfirmation) {
+          broadcastAuthConfirmed(session.user.id);
+
+          // Clear the URL hash/params to clean up
+          if (window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname);
+          }
+        }
       }
     );
 
@@ -34,7 +63,7 @@ const Index = () => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [broadcastAuthConfirmed]);
 
   useEffect(() => {
     const checkUserProfile = async () => {
@@ -79,6 +108,44 @@ const Index = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Show a "confirmation successful" message if this tab was opened from email link
+  // and user is now authenticated. They can close this tab or continue here.
+  if (isConfirmationTab && user && !showOnboarding) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="max-w-md text-center space-y-6">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle className="h-8 w-8 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-serif font-bold">¡Email confirmado!</h1>
+            <p className="text-muted-foreground">
+              Tu cuenta ha sido verificada exitosamente.
+              Puedes cerrar esta pestaña y continuar en la ventana original.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <button
+              onClick={() => {
+                // Try to close, if it fails, continue here
+                window.close();
+              }}
+              className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
+            >
+              Cerrar esta pestaña
+            </button>
+            <button
+              onClick={() => setIsConfirmationTab(false)}
+              className="w-full py-3 px-4 border border-border rounded-lg font-medium hover:bg-muted/50 transition-colors"
+            >
+              Continuar aquí
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
