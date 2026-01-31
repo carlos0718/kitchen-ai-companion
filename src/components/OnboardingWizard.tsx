@@ -42,13 +42,13 @@ type FormData = {
 };
 
 const DIETARY_RESTRICTIONS = [
-  { id: 'vegetariano', label: 'Vegetariano' },
-  { id: 'vegano', label: 'Vegano' },
   { id: 'celíaco', label: 'Celíaco (sin gluten)' },
   { id: 'sin_lactosa', label: 'Sin lactosa' },
-  { id: 'keto', label: 'Keto' },
-  { id: 'paleo', label: 'Paleo' },
   { id: 'sin_azúcar', label: 'Sin azúcar' },
+  { id: 'bajo_en_sodio', label: 'Bajo en sodio (hipertensión)' },
+  { id: 'diabético', label: 'Diabético / Bajo índice glucémico' },
+  { id: 'sin_cerdo', label: 'Sin cerdo (Halal/Kosher)' },
+  { id: 'bajo_colesterol', label: 'Bajo en colesterol' },
 ];
 
 const DIET_TYPES = [
@@ -402,13 +402,13 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
             </div>
           )}
 
-          {/* Step 3: Restricciones Dietéticas y Alergias */}
+          {/* Step 3: Restricciones Médicas y Alergias */}
           {currentStep === 3 && (
             <div className="space-y-6">
               <div>
-                <h3 className="font-semibold text-lg mb-4">Restricciones Dietéticas</h3>
+                <h3 className="font-semibold text-lg mb-4">Restricciones Médicas / Intolerancias</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Selecciona las que apliquen (opcional):
+                  ¿Tienes alguna condición médica o intolerancia alimentaria? (opcional):
                 </p>
                 <div className="space-y-3">
                   {DIETARY_RESTRICTIONS.map((item) => (
