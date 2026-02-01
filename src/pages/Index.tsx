@@ -9,7 +9,7 @@ import { LandingNavbar } from '@/components/landing/LandingNavbar';
 import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { DietsSection } from '@/components/landing/DietsSection';
 import { FAQSection } from '@/components/landing/FAQSection';
-import { ChefHat, CheckCircle } from 'lucide-react';
+import { ChefHat, CheckCircle, ArrowLeft } from 'lucide-react';
 import { useAuthBroadcast, isEmailConfirmationRedirect } from '@/hooks/useAuthBroadcast';
 
 const Index = () => {
@@ -19,6 +19,7 @@ const Index = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
   const [isConfirmationTab, setIsConfirmationTab] = useState(false);
+  const [emailConfirmed, setEmailConfirmed] = useState(false);
 
   // Callback when another tab broadcasts auth confirmation
   const handleAuthBroadcast = useCallback(() => {
@@ -41,24 +42,38 @@ const Index = () => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-
-        // If user just signed in (from email confirmation), broadcast to other tabs
-        if (event === 'SIGNED_IN' && session?.user && isConfirmation) {
-          broadcastAuthConfirmed(session.user.id);
-
-          // Clear the URL hash/params to clean up
-          if (window.history.replaceState) {
-            window.history.replaceState(null, '', window.location.pathname);
+        // If this is the confirmation tab, show confirmation message instead of proceeding
+        if (isConfirmation) {
+          if (event === 'SIGNED_IN' && session?.user) {
+            // Broadcast to other tabs so they can update
+            broadcastAuthConfirmed(session.user.id);
+            // Show confirmation message (don't set user so we don't show onboarding here)
+            setEmailConfirmed(true);
+            setLoading(false);
+            // Clear the URL hash/params
+            if (window.history.replaceState) {
+              window.history.replaceState(null, '', window.location.pathname);
+            }
           }
+        } else {
+          // Normal tab behavior - update user state
+          setUser(session?.user ?? null);
+          setLoading(false);
         }
       }
     );
 
-    // THEN check for existing session
+    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      if (isConfirmation) {
+        // For confirmation tab, if already authenticated, show confirmation
+        if (session?.user) {
+          setEmailConfirmed(true);
+        }
+      } else {
+        // Normal tab - set user
+        setUser(session?.user ?? null);
+      }
       setLoading(false);
     });
 
@@ -112,38 +127,29 @@ const Index = () => {
     );
   }
 
-  // Show a "confirmation successful" message if this tab was opened from email link
-  // and user is now authenticated. They can close this tab or continue here.
-  if (isConfirmationTab && user && !showOnboarding) {
+  // Show confirmation message in the tab opened from email link
+  if (isConfirmationTab && emailConfirmed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="max-w-md text-center space-y-6">
-          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
-            <CheckCircle className="h-8 w-8 text-primary" />
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-serif font-bold">¡Email confirmado!</h1>
-            <p className="text-muted-foreground">
-              Tu cuenta ha sido verificada exitosamente.
-              Puedes cerrar esta pestaña y continuar en la ventana original.
-            </p>
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto">
+            <CheckCircle className="h-10 w-10 text-primary" />
           </div>
           <div className="space-y-3">
-            <button
-              onClick={() => {
-                // Try to close, if it fails, continue here
-                window.close();
-              }}
-              className="w-full py-3 px-4 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
-            >
-              Cerrar esta pestaña
-            </button>
-            <button
-              onClick={() => setIsConfirmationTab(false)}
-              className="w-full py-3 px-4 border border-border rounded-lg font-medium hover:bg-muted/50 transition-colors"
-            >
-              Continuar aquí
-            </button>
+            <h1 className="text-2xl font-serif font-bold text-foreground">¡Email confirmado!</h1>
+            <p className="text-muted-foreground">
+              Tu cuenta ha sido verificada exitosamente.
+              Regresa a la pestaña anterior para iniciar sesión y completar tu perfil.
+            </p>
+          </div>
+          <div className="pt-4 space-y-3">
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Vuelve a la pestaña donde te registraste</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Puedes cerrar esta pestaña de forma segura.
+            </p>
           </div>
         </div>
       </div>
