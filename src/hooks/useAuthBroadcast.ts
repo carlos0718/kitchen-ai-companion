@@ -58,22 +58,53 @@ export function useAuthBroadcast(onAuthConfirmed?: () => void) {
   };
 }
 
-/**
- * Checks if the current page was opened from an email confirmation link.
- * Supabase includes hash fragments like #access_token=... or ?token_hash=...
- */
-export function isEmailConfirmationRedirect(): boolean {
+// Check for email confirmation IMMEDIATELY when module loads (before Supabase cleans URL)
+const CONFIRMATION_KEY = 'kitchen-ai-email-confirmation';
+
+function checkAndStoreConfirmation(): boolean {
+  // First check if we already determined this is a confirmation tab
+  const stored = sessionStorage.getItem(CONFIRMATION_KEY);
+  if (stored === 'true') {
+    return true;
+  }
+
   const hash = window.location.hash;
   const search = window.location.search;
 
   // Check for Supabase auth tokens in URL
-  return (
+  const isConfirmation = (
     hash.includes('access_token') ||
     hash.includes('refresh_token') ||
     search.includes('token_hash') ||
     search.includes('type=signup') ||
-    search.includes('type=email')
+    search.includes('type=email') ||
+    search.includes('type=recovery')
   );
+
+  if (isConfirmation) {
+    // Store in sessionStorage so it persists even after URL is cleaned
+    sessionStorage.setItem(CONFIRMATION_KEY, 'true');
+  }
+
+  return isConfirmation;
+}
+
+// Run check immediately when module loads
+const isConfirmationOnLoad = checkAndStoreConfirmation();
+
+/**
+ * Checks if the current page was opened from an email confirmation link.
+ * This uses a stored value since Supabase cleans the URL tokens quickly.
+ */
+export function isEmailConfirmationRedirect(): boolean {
+  return isConfirmationOnLoad || sessionStorage.getItem(CONFIRMATION_KEY) === 'true';
+}
+
+/**
+ * Clears the confirmation flag (call this when user navigates away intentionally)
+ */
+export function clearConfirmationFlag(): void {
+  sessionStorage.removeItem(CONFIRMATION_KEY);
 }
 
 /**

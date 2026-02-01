@@ -68,6 +68,8 @@ const Index = () => {
       if (isConfirmation) {
         // For confirmation tab, if already authenticated, show confirmation
         if (session?.user) {
+          // Also broadcast in case SIGNED_IN event already fired
+          broadcastAuthConfirmed(session.user.id);
           setEmailConfirmed(true);
         }
       } else {
