@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,7 +10,7 @@ import { FeaturesSection } from '@/components/landing/FeaturesSection';
 import { DietsSection } from '@/components/landing/DietsSection';
 import { FAQSection } from '@/components/landing/FAQSection';
 import { ChefHat, CheckCircle, ArrowLeft } from 'lucide-react';
-import { useAuthBroadcast, isEmailConfirmationRedirect } from '@/hooks/useAuthBroadcast';
+import { isEmailConfirmationRedirect } from '@/hooks/useAuthBroadcast';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -21,19 +21,6 @@ const Index = () => {
   const [isConfirmationTab, setIsConfirmationTab] = useState(false);
   const [emailConfirmed, setEmailConfirmed] = useState(false);
 
-  // Callback when another tab broadcasts auth confirmation
-  const handleAuthBroadcast = useCallback(() => {
-    // Refresh the session from another tab's confirmation
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-        setLoading(false);
-      }
-    });
-  }, []);
-
-  const { broadcastAuthConfirmed } = useAuthBroadcast(handleAuthBroadcast);
-
   useEffect(() => {
     // Check if this is an email confirmation redirect
     const isConfirmation = isEmailConfirmationRedirect();
@@ -41,19 +28,22 @@ const Index = () => {
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        // If this is the confirmation tab, show confirmation message instead of proceeding
+      async (event, session) => {
+        // If this is the confirmation tab, show confirmation message and sign out
         if (isConfirmation) {
           if (event === 'SIGNED_IN' && session?.user) {
-            // Broadcast to other tabs so they can update
-            broadcastAuthConfirmed(session.user.id);
-            // Show confirmation message (don't set user so we don't show onboarding here)
+            // Show confirmation message
             setEmailConfirmed(true);
             setLoading(false);
             // Clear the URL hash/params
             if (window.history.replaceState) {
               window.history.replaceState(null, '', window.location.pathname);
             }
+            // Sign out so user must log in manually on the original tab
+            // Small delay to ensure the confirmation message is shown
+            setTimeout(() => {
+              supabase.auth.signOut();
+            }, 500);
           }
         } else {
           // Normal tab behavior - update user state
@@ -64,23 +54,28 @@ const Index = () => {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (isConfirmation) {
-        // For confirmation tab, if already authenticated, show confirmation
+        // For confirmation tab, if already authenticated, show confirmation and sign out
         if (session?.user) {
-          // Also broadcast in case SIGNED_IN event already fired
-          broadcastAuthConfirmed(session.user.id);
           setEmailConfirmed(true);
+          setLoading(false);
+          // Sign out so user must log in manually on the original tab
+          setTimeout(() => {
+            supabase.auth.signOut();
+          }, 500);
+        } else {
+          setLoading(false);
         }
       } else {
         // Normal tab - set user
         setUser(session?.user ?? null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
-  }, [broadcastAuthConfirmed]);
+  }, []);
 
   useEffect(() => {
     const checkUserProfile = async () => {
