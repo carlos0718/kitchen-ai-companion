@@ -28,23 +28,17 @@ const Index = () => {
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        // If this is the confirmation tab, show message and sign out immediately
+      (event, session) => {
+        // If this is the confirmation tab, just show the confirmation message
         if (isConfirmation) {
           if (event === 'SIGNED_IN' && session?.user) {
-            // Clear the URL hash/params first
+            // Clear the URL hash/params
             if (window.history.replaceState) {
               window.history.replaceState(null, '', window.location.pathname);
             }
-            // Sign out IMMEDIATELY so other tabs don't auto-login
-            await supabase.auth.signOut();
-            // Then show confirmation message
+            // Show confirmation message - don't sign out, let session persist for original tab
             setEmailConfirmed(true);
             setLoading(false);
-          }
-          // Ignore SIGNED_OUT events in confirmation tab to keep showing the message
-          if (event === 'SIGNED_OUT') {
-            return;
           }
         } else {
           // Normal tab behavior - update user state
@@ -55,11 +49,10 @@ const Index = () => {
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (isConfirmation) {
-        // For confirmation tab, if already authenticated, sign out and show confirmation
+        // For confirmation tab, if already authenticated, show confirmation
         if (session?.user) {
-          await supabase.auth.signOut();
           setEmailConfirmed(true);
         }
         setLoading(false);
@@ -132,7 +125,7 @@ const Index = () => {
             <h1 className="text-2xl font-serif font-bold text-foreground">¡Email confirmado!</h1>
             <p className="text-muted-foreground">
               Tu cuenta ha sido verificada exitosamente.
-              Regresa a la pestaña anterior para iniciar sesión y completar tu perfil.
+              Regresa a la pestaña anterior para completar tu perfil.
             </p>
           </div>
           <div className="pt-4 space-y-3">
@@ -141,7 +134,7 @@ const Index = () => {
               <span>Vuelve a la pestaña donde te registraste</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Puedes cerrar esta pestaña de forma segura.
+              Ya estás autenticado. Puedes cerrar esta pestaña.
             </p>
           </div>
         </div>
