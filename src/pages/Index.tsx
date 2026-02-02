@@ -29,21 +29,22 @@ const Index = () => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // If this is the confirmation tab, show confirmation message and sign out
+        // If this is the confirmation tab, show message and sign out immediately
         if (isConfirmation) {
           if (event === 'SIGNED_IN' && session?.user) {
-            // Show confirmation message
-            setEmailConfirmed(true);
-            setLoading(false);
-            // Clear the URL hash/params
+            // Clear the URL hash/params first
             if (window.history.replaceState) {
               window.history.replaceState(null, '', window.location.pathname);
             }
-            // Sign out so user must log in manually on the original tab
-            // Small delay to ensure the confirmation message is shown
-            setTimeout(() => {
-              supabase.auth.signOut();
-            }, 500);
+            // Sign out IMMEDIATELY so other tabs don't auto-login
+            await supabase.auth.signOut();
+            // Then show confirmation message
+            setEmailConfirmed(true);
+            setLoading(false);
+          }
+          // Ignore SIGNED_OUT events in confirmation tab to keep showing the message
+          if (event === 'SIGNED_OUT') {
+            return;
           }
         } else {
           // Normal tab behavior - update user state
@@ -56,17 +57,12 @@ const Index = () => {
     // Check for existing session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (isConfirmation) {
-        // For confirmation tab, if already authenticated, show confirmation and sign out
+        // For confirmation tab, if already authenticated, sign out and show confirmation
         if (session?.user) {
+          await supabase.auth.signOut();
           setEmailConfirmed(true);
-          setLoading(false);
-          // Sign out so user must log in manually on the original tab
-          setTimeout(() => {
-            supabase.auth.signOut();
-          }, 500);
-        } else {
-          setLoading(false);
         }
+        setLoading(false);
       } else {
         // Normal tab - set user
         setUser(session?.user ?? null);
