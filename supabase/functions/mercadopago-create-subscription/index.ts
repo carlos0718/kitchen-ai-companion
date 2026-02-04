@@ -90,8 +90,12 @@ serve(async (req: Request) => {
     const periodEnd = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
     // Create subscription using Mercado Pago Preapproval API
-    // Note: We don't set payer_email to allow users to pay with any MercadoPago account
+    // payer_email is required by MP API but only for notifications
+    // Users can still pay with any MercadoPago account
+    const userEmail = user.email || "noreply@kitchen-ai.com";
+
     const subscription = {
+      payer_email: userEmail,
       reason: plan === "weekly" ? "Plan Semanal - Kitchen AI" : "Plan Mensual - Kitchen AI",
       auto_recurring: {
         frequency: frequency,
