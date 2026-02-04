@@ -29,6 +29,14 @@ serve(async (req: Request) => {
       throw new Error("MERCADOPAGO_ACCESS_TOKEN is not set");
     }
 
+    // Get plan IDs from secrets
+    const weeklyPlanId = Deno.env.get("MP_WEEKLY_PLAN_ID");
+    const monthlyPlanId = Deno.env.get("MP_MONTHLY_PLAN_ID");
+
+    if (!weeklyPlanId || !monthlyPlanId) {
+      throw new Error("MercadoPago plan IDs are not configured");
+    }
+
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -55,33 +63,9 @@ serve(async (req: Request) => {
 
     console.log("[MP-CREATE-SUBSCRIPTION] Creating subscription for user:", user.id, "plan:", plan);
 
-    // Fetch current MEP exchange rate
-    console.log("[MP-CREATE-SUBSCRIPTION] Fetching exchange rate...");
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const exchangeRateResponse = await fetch(`${supabaseUrl}/functions/v1/get-exchange-rate`);
-
-    if (!exchangeRateResponse.ok) {
-      throw new Error("Failed to fetch exchange rate");
-    }
-
-    const exchangeData = await exchangeRateResponse.json();
-    const exchangeRate = exchangeData.rate;
-
-    if (!exchangeRate || typeof exchangeRate !== "number") {
-      throw new Error("Invalid exchange rate received");
-    }
-
-    console.log("[MP-CREATE-SUBSCRIPTION] Exchange rate:", exchangeRate);
-
-    // Calculate dynamic pricing based on USD prices × MEP rate
-    const weeklyPrice = Math.round(4.99 * exchangeRate);
-    const monthlyPrice = Math.round(14.99 * exchangeRate);
-
-    console.log("[MP-CREATE-SUBSCRIPTION] Calculated prices - Weekly:", weeklyPrice, "Monthly:", monthlyPrice);
-
-    const price = plan === "weekly" ? weeklyPrice : monthlyPrice;
-    const frequency = plan === "weekly" ? 7 : 1;
-    const frequencyType = plan === "weekly" ? "days" : "months";
+    // Get the plan ID and price based on selection
+    const planId = plan === "weekly" ? weeklyPlanId : monthlyPlanId;
+    const price = plan === "weekly" ? 7500 : 25000;
 
     // Calculate subscription period (first period)
     const now = new Date();
@@ -89,29 +73,21 @@ serve(async (req: Request) => {
     const daysToAdd = plan === "weekly" ? 7 : 30;
     const periodEnd = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
-    // Create subscription using Mercado Pago Preapproval API
-    // payer_email is required by MP API but only for notifications
-    // Users can still pay with any MercadoPago account
+    // Create subscription WITH plan association
+    // This allows any MercadoPago account to pay (no email validation)
     const userEmail = user.email || "noreply@kitchen-ai.com";
 
     const subscription = {
+      preapproval_plan_id: planId,
       payer_email: userEmail,
-      reason: plan === "weekly" ? "Plan Semanal - Kitchen AI" : "Plan Mensual - Kitchen AI",
-      auto_recurring: {
-        frequency: frequency,
-        frequency_type: frequencyType,
-        transaction_amount: price,
-        currency_id: "ARS",
-      },
-      back_url: "https://kitchen-ai-companion.vercel.app/profile/subscription",
       external_reference: user.id,
+      back_url: "https://kitchen-ai-companion.vercel.app/profile/subscription",
     };
 
     console.log("[MP-CREATE-SUBSCRIPTION] Request body:", JSON.stringify(subscription));
+    console.log("[MP-CREATE-SUBSCRIPTION] Calling Mercado Pago Preapproval API with plan...");
 
-    console.log("[MP-CREATE-SUBSCRIPTION] Calling Mercado Pago Preapproval API...");
-
-    // Call Mercado Pago API to create subscription
+    // Call Mercado Pago API to create subscription with plan
     const mpResponse = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
       headers: {
@@ -140,12 +116,13 @@ serve(async (req: Request) => {
         user_id: user.id,
         payment_gateway: "mercadopago",
         mercadopago_subscription_id: subscriptionId,
+        mercadopago_plan_id: planId,
         plan: plan,
         status: "pending",
         current_period_start: periodStart,
         current_period_end: periodEnd,
-        is_recurring: true, // Suscripción recurrente
-        subscribed: false, // Se activará cuando el primer pago sea exitoso
+        is_recurring: true,
+        subscribed: false,
         expiration_notified: false,
         updated_at: new Date().toISOString(),
       }, {
@@ -159,6 +136,9 @@ serve(async (req: Request) => {
     }
 
     console.log("[MP-CREATE-SUBSCRIPTION] Saved to database");
+
+    const frequency = plan === "weekly" ? 7 : 1;
+    const frequencyType = plan === "weekly" ? "days" : "months";
 
     return new Response(
       JSON.stringify({

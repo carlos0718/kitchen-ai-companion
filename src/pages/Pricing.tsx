@@ -10,11 +10,11 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
-const getPricing = (currency: 'USD' | 'ARS', exchangeRate?: number) => {
-  if (currency === 'ARS' && exchangeRate) {
-    // Calculate prices based on USD prices × MEP exchange rate
-    const weeklyARS = Math.round(4.99 * exchangeRate);
-    const monthlyARS = Math.round(14.99 * exchangeRate);
+const getPricing = (currency: 'USD' | 'ARS', _exchangeRate?: number) => {
+  if (currency === 'ARS') {
+    // Fixed prices in ARS (matching MercadoPago plans)
+    const weeklyARS = 7500;
+    const monthlyARS = 25000;
 
     return {
       weekly: {
