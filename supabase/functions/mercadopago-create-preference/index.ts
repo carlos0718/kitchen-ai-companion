@@ -10,7 +10,7 @@ interface CreatePreferenceRequest {
   plan: "weekly" | "monthly";
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -87,10 +87,8 @@ serve(async (req) => {
     const periodStart = now.toISOString();
     const periodEnd = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
-    // Get user email
-    const userEmail = user.email || "noreply@kitchen-ai.com";
-
     // Create preference object for Mercado Pago API
+    // Note: We don't set payer.email to allow users to pay with any MercadoPago account
     const preference = {
       items: [
         {
@@ -101,9 +99,6 @@ serve(async (req) => {
           currency_id: "ARS",
         },
       ],
-      payer: {
-        email: userEmail,
-      },
       back_urls: {
         success: `${Deno.env.get("SUPABASE_URL")?.replace("supabase.co", "supabase.co")}/profile/subscription`,
         failure: `${Deno.env.get("SUPABASE_URL")?.replace("supabase.co", "supabase.co")}/pricing`,

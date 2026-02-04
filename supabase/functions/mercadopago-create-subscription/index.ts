@@ -10,7 +10,7 @@ interface CreateSubscriptionRequest {
   plan: "weekly" | "monthly";
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -83,9 +83,6 @@ serve(async (req) => {
     const frequency = plan === "weekly" ? 7 : 1;
     const frequencyType = plan === "weekly" ? "days" : "months";
 
-    // Get user email
-    const userEmail = user.email || "noreply@kitchen-ai.com";
-
     // Calculate subscription period (first period)
     const now = new Date();
     const periodStart = now.toISOString();
@@ -93,6 +90,7 @@ serve(async (req) => {
     const periodEnd = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
     // Create subscription using Mercado Pago Preapproval API
+    // Note: We don't set payer_email to allow users to pay with any MercadoPago account
     const subscription = {
       reason: plan === "weekly" ? "Plan Semanal - Kitchen AI" : "Plan Mensual - Kitchen AI",
       auto_recurring: {
@@ -102,7 +100,6 @@ serve(async (req) => {
         currency_id: "ARS",
       },
       back_url: "https://kitchen-ai-companion.vercel.app/profile/subscription",
-      payer_email: userEmail,
       external_reference: user.id,
     };
 
