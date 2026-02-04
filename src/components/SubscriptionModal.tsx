@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Check, Crown, Sparkles, Loader2, X, TrendingDown, Star, CreditCard, MapPin } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Check, Crown, Sparkles, Loader2, X, TrendingDown, Star, CreditCard, MapPin, Mail, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +16,7 @@ interface SubscriptionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentPlan: 'free' | 'weekly' | 'monthly';
-  onSubscribe: (plan: 'weekly' | 'monthly') => Promise<void>;
+  onSubscribe: (plan: 'weekly' | 'monthly', mercadoPagoEmail?: string) => Promise<void>;
   onManage: () => Promise<void>;
 }
 
@@ -125,6 +127,10 @@ export function SubscriptionModal({
   const [detectingCountry, setDetectingCountry] = useState(true);
   const [paymentAvailable, setPaymentAvailable] = useState(true);
   const [detectedCountry, setDetectedCountry] = useState<string>('AR');
+  // MercadoPago email step
+  const [showEmailStep, setShowEmailStep] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'weekly' | 'monthly' | null>(null);
+  const [mercadoPagoEmail, setMercadoPagoEmail] = useState('');
 
   // Detect country and payment gateway when modal opens
   useEffect(() => {
@@ -188,6 +194,13 @@ export function SubscriptionModal({
   }, [open]);
 
   const handleSubscribe = async (planId: 'weekly' | 'monthly') => {
+    // Show email step for MercadoPago
+    if (gateway === 'mercadopago') {
+      setSelectedPlan(planId);
+      setShowEmailStep(true);
+      return;
+    }
+
     setLoading(planId);
     try {
       await onSubscribe(planId);
@@ -198,6 +211,39 @@ export function SubscriptionModal({
     } finally {
       setLoading(null);
     }
+  };
+
+  const handleEmailSubmit = async () => {
+    if (!selectedPlan) return;
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!mercadoPagoEmail || !emailRegex.test(mercadoPagoEmail)) {
+      toast.error('Email inválido', {
+        description: 'Por favor ingresa un email válido de MercadoPago.',
+      });
+      return;
+    }
+
+    setLoading(selectedPlan);
+    try {
+      await onSubscribe(selectedPlan, mercadoPagoEmail);
+      setShowEmailStep(false);
+      setMercadoPagoEmail('');
+      setSelectedPlan(null);
+    } catch (error) {
+      toast.error('Error al procesar la suscripción', {
+        description: 'Por favor intenta nuevamente o contacta a soporte.',
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleBackFromEmail = () => {
+    setShowEmailStep(false);
+    setSelectedPlan(null);
+    setMercadoPagoEmail('');
   };
 
   const handleManage = async () => {
@@ -262,9 +308,82 @@ export function SubscriptionModal({
           )}
         </DialogHeader>
 
+        {/* MercadoPago Email Step */}
+        {showEmailStep && selectedPlan && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="py-6"
+          >
+            <div className="max-w-md mx-auto space-y-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBackFromEmail}
+                className="mb-2"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver
+              </Button>
+
+              <div className="text-center space-y-2">
+                <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Mail className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold">Email de MercadoPago</h3>
+                <p className="text-muted-foreground">
+                  Ingresá el email de tu cuenta de MercadoPago para completar la suscripción al plan {selectedPlan === 'weekly' ? 'Semanal' : 'Mensual'}.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="mp-email">Email de MercadoPago</Label>
+                  <Input
+                    id="mp-email"
+                    type="email"
+                    placeholder="tu-email@mercadopago.com"
+                    value={mercadoPagoEmail}
+                    onChange={(e) => setMercadoPagoEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Este email debe coincidir con tu cuenta de MercadoPago para que el pago sea exitoso.
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleEmailSubmit}
+                  disabled={loading !== null || !mercadoPagoEmail}
+                  className="w-full bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+                >
+                  {loading === selectedPlan ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Procesando...
+                    </>
+                  ) : (
+                    <>
+                      Continuar con MercadoPago
+                      <CreditCard className="h-4 w-4 ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <Alert>
+                <Mail className="h-4 w-4" />
+                <AlertDescription>
+                  Usamos este email para vincular tu suscripción con tu cuenta de MercadoPago. Asegurate de que sea el email correcto.
+                </AlertDescription>
+              </Alert>
+            </div>
+          </motion.div>
+        )}
+
         {/* Success/Canceled Alerts */}
         <AnimatePresence>
-          {showSuccess && (
+          {showSuccess && !showEmailStep && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -278,7 +397,7 @@ export function SubscriptionModal({
               </Alert>
             </motion.div>
           )}
-          {showCanceled && (
+          {showCanceled && !showEmailStep && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -293,6 +412,7 @@ export function SubscriptionModal({
           )}
         </AnimatePresence>
 
+        {!showEmailStep && (
         <Tabs defaultValue="plans" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="plans">Planes</TabsTrigger>
@@ -629,11 +749,14 @@ export function SubscriptionModal({
             </Card>
           </TabsContent>
         </Tabs>
+        )}
 
         {/* Footer Note */}
-        <p className="text-xs text-center text-muted-foreground mt-4">
-          Puedes cancelar tu suscripción en cualquier momento desde el portal de gestión.
-        </p>
+        {!showEmailStep && (
+          <p className="text-xs text-center text-muted-foreground mt-4">
+            Puedes cancelar tu suscripción en cualquier momento desde el portal de gestión.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

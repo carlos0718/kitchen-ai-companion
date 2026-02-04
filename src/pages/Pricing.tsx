@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FAQSection } from '@/components/landing/FAQSection';
-import { Check, Crown, Sparkles, ArrowRight, Star, TrendingDown, X, ChefHat, CreditCard } from 'lucide-react';
+import { Check, Crown, Sparkles, ArrowRight, Star, TrendingDown, X, ChefHat, CreditCard, Mail, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSubscription } from '@/hooks/useSubscription';
 import { toast } from 'sonner';
@@ -114,6 +118,10 @@ export function Pricing() {
   const [gateway, setGateway] = useState<'stripe' | 'mercadopago'>('stripe');
   const [exchangeRate, setExchangeRate] = useState<number | undefined>(undefined);
   const [detectingCountry, setDetectingCountry] = useState(true);
+  // MercadoPago email dialog
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'weekly' | 'monthly' | null>(null);
+  const [mercadoPagoEmail, setMercadoPagoEmail] = useState('');
 
   // Detect country on component mount
   useEffect(() => {
@@ -151,9 +159,43 @@ export function Pricing() {
       return;
     }
 
+    // Show email dialog for MercadoPago
+    if (gateway === 'mercadopago') {
+      setSelectedPlan(planId);
+      setShowEmailDialog(true);
+      return;
+    }
+
     setLoading(planId);
     try {
       await createCheckout(planId);
+    } catch (error) {
+      toast.error('Error al procesar la suscripción', {
+        description: 'Por favor intenta nuevamente o contacta a soporte.',
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleEmailSubmit = async () => {
+    if (!selectedPlan) return;
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!mercadoPagoEmail || !emailRegex.test(mercadoPagoEmail)) {
+      toast.error('Email inválido', {
+        description: 'Por favor ingresa un email válido de MercadoPago.',
+      });
+      return;
+    }
+
+    setLoading(selectedPlan);
+    try {
+      await createCheckout(selectedPlan, mercadoPagoEmail);
+      setShowEmailDialog(false);
+      setMercadoPagoEmail('');
+      setSelectedPlan(null);
     } catch (error) {
       toast.error('Error al procesar la suscripción', {
         description: 'Por favor intenta nuevamente o contacta a soporte.',
@@ -518,6 +560,72 @@ export function Pricing() {
           </p>
         </div>
       </footer>
+
+      {/* MercadoPago Email Dialog */}
+      <Dialog open={showEmailDialog} onOpenChange={setShowEmailDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-primary" />
+              Email de MercadoPago
+            </DialogTitle>
+            <DialogDescription>
+              Ingresá el email de tu cuenta de MercadoPago para completar la suscripción al plan {selectedPlan === 'weekly' ? 'Semanal' : 'Mensual'}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="mp-email-pricing">Email de MercadoPago</Label>
+              <Input
+                id="mp-email-pricing"
+                type="email"
+                placeholder="tu-email@mercadopago.com"
+                value={mercadoPagoEmail}
+                onChange={(e) => setMercadoPagoEmail(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleEmailSubmit()}
+              />
+              <p className="text-xs text-muted-foreground">
+                Este email debe coincidir con tu cuenta de MercadoPago para que el pago sea exitoso.
+              </p>
+            </div>
+
+            <Alert>
+              <Mail className="h-4 w-4" />
+              <AlertDescription>
+                Usamos este email para vincular tu suscripción con tu cuenta de MercadoPago.
+              </AlertDescription>
+            </Alert>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowEmailDialog(false)}
+                className="flex-1"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleEmailSubmit}
+                disabled={loading !== null || !mercadoPagoEmail}
+                className="flex-1 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90"
+              >
+                {loading === selectedPlan ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Procesando...
+                  </>
+                ) : (
+                  <>
+                    Continuar
+                    <CreditCard className="h-4 w-4 ml-2" />
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

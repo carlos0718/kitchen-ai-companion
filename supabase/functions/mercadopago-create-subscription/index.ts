@@ -8,6 +8,7 @@ const corsHeaders = {
 
 interface CreateSubscriptionRequest {
   plan: "weekly" | "monthly";
+  mercadoPagoEmail?: string;
 }
 
 serve(async (req: Request) => {
@@ -29,14 +30,6 @@ serve(async (req: Request) => {
       throw new Error("MERCADOPAGO_ACCESS_TOKEN is not set");
     }
 
-    // Get plan IDs from secrets
-    const weeklyPlanId = Deno.env.get("MP_WEEKLY_PLAN_ID");
-    const monthlyPlanId = Deno.env.get("MP_MONTHLY_PLAN_ID");
-
-    if (!weeklyPlanId || !monthlyPlanId) {
-      throw new Error("MercadoPago plan IDs are not configured");
-    }
-
     // Authenticate user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
@@ -55,17 +48,23 @@ serve(async (req: Request) => {
     }
 
     // Parse request body
-    const { plan }: CreateSubscriptionRequest = await req.json();
+    const { plan, mercadoPagoEmail }: CreateSubscriptionRequest = await req.json();
 
     if (!plan || (plan !== "weekly" && plan !== "monthly")) {
       throw new Error("Invalid plan. Must be 'weekly' or 'monthly'");
     }
 
-    console.log("[MP-CREATE-SUBSCRIPTION] Creating subscription for user:", user.id, "plan:", plan);
+    // Require MercadoPago email
+    if (!mercadoPagoEmail) {
+      throw new Error("Se requiere el email de tu cuenta de MercadoPago");
+    }
 
-    // Get the plan ID and price based on selection
-    const planId = plan === "weekly" ? weeklyPlanId : monthlyPlanId;
+    console.log("[MP-CREATE-SUBSCRIPTION] Creating subscription for user:", user.id, "plan:", plan, "mpEmail:", mercadoPagoEmail);
+
+    // Fixed prices in ARS
     const price = plan === "weekly" ? 7500 : 25000;
+    const frequency = plan === "weekly" ? 7 : 1;
+    const frequencyType = plan === "weekly" ? "days" : "months";
 
     // Calculate subscription period (first period)
     const now = new Date();
@@ -73,21 +72,24 @@ serve(async (req: Request) => {
     const daysToAdd = plan === "weekly" ? 7 : 30;
     const periodEnd = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
-    // Create subscription WITH plan association
-    // This allows any MercadoPago account to pay (no email validation)
-    const userEmail = user.email || "noreply@kitchen-ai.com";
-
+    // Create subscription WITHOUT plan association (uses user-provided MP email)
     const subscription = {
-      preapproval_plan_id: planId,
-      payer_email: userEmail,
-      external_reference: user.id,
+      payer_email: mercadoPagoEmail, // Use the email from user's MercadoPago account
+      reason: plan === "weekly" ? "Plan Semanal - Kitchen AI" : "Plan Mensual - Kitchen AI",
+      auto_recurring: {
+        frequency: frequency,
+        frequency_type: frequencyType,
+        transaction_amount: price,
+        currency_id: "ARS",
+      },
       back_url: "https://kitchen-ai-companion.vercel.app/profile/subscription",
+      external_reference: user.id,
     };
 
     console.log("[MP-CREATE-SUBSCRIPTION] Request body:", JSON.stringify(subscription));
-    console.log("[MP-CREATE-SUBSCRIPTION] Calling Mercado Pago Preapproval API with plan...");
+    console.log("[MP-CREATE-SUBSCRIPTION] Calling Mercado Pago Preapproval API...");
 
-    // Call Mercado Pago API to create subscription with plan
+    // Call Mercado Pago API to create subscription
     const mpResponse = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
       headers: {
@@ -116,7 +118,6 @@ serve(async (req: Request) => {
         user_id: user.id,
         payment_gateway: "mercadopago",
         mercadopago_subscription_id: subscriptionId,
-        mercadopago_plan_id: planId,
         plan: plan,
         status: "pending",
         current_period_start: periodStart,
@@ -136,9 +137,6 @@ serve(async (req: Request) => {
     }
 
     console.log("[MP-CREATE-SUBSCRIPTION] Saved to database");
-
-    const frequency = plan === "weekly" ? 7 : 1;
-    const frequencyType = plan === "weekly" ? "days" : "months";
 
     return new Response(
       JSON.stringify({
