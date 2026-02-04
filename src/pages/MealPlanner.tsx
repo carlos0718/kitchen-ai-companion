@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useMealPlanner } from '@/hooks/useMealPlanner';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -56,6 +56,7 @@ export function MealPlanner() {
   const [snackPreference, setSnackPreference] = useState<string>('3meals');
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showShoppingListPopover, setShowShoppingListPopover] = useState(false);
+  const hasAutoNavigated = useRef(false);
 
   // Subscription hook
   const {
@@ -64,8 +65,10 @@ export function MealPlanner() {
     loading: subLoading,
     getMealPlanningDateRange,
     canGenerateMealPlanForDate,
+    canGenerateWeekPlan,
     createCheckout,
-    openCustomerPortal
+    openCustomerPortal,
+    currentPeriodStart
   } = useSubscription();
 
   const planningRange = getMealPlanningDateRange();
@@ -86,6 +89,21 @@ export function MealPlanner() {
       }
     });
   }, []);
+
+  // Auto-navigate to subscription start week on first load
+  useEffect(() => {
+    if (subscribed && currentPeriodStart && !subLoading && !hasAutoNavigated.current) {
+      const subscriptionStart = new Date(currentPeriodStart);
+      const today = new Date();
+
+      // If subscription start is in the future or current period, navigate to that week
+      // This ensures the user sees their subscription period days
+      if (subscriptionStart > today) {
+        setCurrentWeekDate(subscriptionStart);
+      }
+      hasAutoNavigated.current = true;
+    }
+  }, [subscribed, currentPeriodStart, subLoading]);
 
   const {
     mealPlan,
@@ -160,7 +178,7 @@ export function MealPlanner() {
 
   // Handle weekly plan generation with subscription check
   const handleGenerateWeekly = async () => {
-    if (!subscribed || !canGenerateMealPlanForDate(weekStart)) {
+    if (!subscribed || !canGenerateWeekPlan(weekStart, weekEnd)) {
       setShowSubscriptionModal(true);
       toast.error('Necesitas una suscripción activa');
       return;
@@ -406,7 +424,7 @@ export function MealPlanner() {
             </Button>
             <Button
               onClick={handleGenerateWeekly}
-              disabled={generating || !subscribed || !canGenerateMealPlanForDate(weekStart)}
+              disabled={generating || !subscribed || !canGenerateWeekPlan(weekStart, weekEnd)}
               size="sm"
               className="gap-1 md:gap-2 text-xs md:text-sm"
             >
@@ -544,7 +562,7 @@ export function MealPlanner() {
               </p>
               <Button
                 onClick={handleGenerateWeekly}
-                disabled={generating || !subscribed || !canGenerateMealPlanForDate(weekStart)}
+                disabled={generating || !subscribed || !canGenerateWeekPlan(weekStart, weekEnd)}
                 size="lg"
                 className="gap-2"
               >

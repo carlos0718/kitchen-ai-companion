@@ -98,6 +98,20 @@ export function useSubscription() {
     // Reduce polling to 5 minutes since webhooks handle real-time updates
     const interval = setInterval(checkSubscription, 300000);
 
+    // Refresh subscription when user returns to the tab (e.g., after MercadoPago payment)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkSubscription();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Also refresh on window focus (backup for visibility change)
+    const handleFocus = () => {
+      checkSubscription();
+    };
+    window.addEventListener('focus', handleFocus);
+
     // Set up Realtime subscription for instant updates
     let channel: ReturnType<typeof supabase.channel> | null = null;
 
@@ -126,6 +140,8 @@ export function useSubscription() {
 
     return () => {
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
       if (channel) {
         supabase.removeChannel(channel);
       }
@@ -235,6 +251,36 @@ export function useSubscription() {
     return targetDateOnly >= rangeStartOnly && targetDateOnly <= rangeEndOnly;
   }, [state.subscribed, getMealPlanningDateRange]);
 
+  // Check if ANY day in a week overlaps with subscription period
+  // Used for "Generate Week" button validation
+  const canGenerateWeekPlan = useCallback((weekStart: Date, weekEnd: Date): boolean => {
+    if (!state.subscribed) {
+      return false;
+    }
+
+    const range = getMealPlanningDateRange();
+    if (!range) {
+      return false;
+    }
+
+    // Normalize dates
+    const weekStartOnly = new Date(weekStart);
+    weekStartOnly.setHours(0, 0, 0, 0);
+
+    const weekEndOnly = new Date(weekEnd);
+    weekEndOnly.setHours(23, 59, 59, 999);
+
+    const rangeStartOnly = new Date(range.startDate);
+    rangeStartOnly.setHours(0, 0, 0, 0);
+
+    const rangeEndOnly = new Date(range.endDate);
+    rangeEndOnly.setHours(23, 59, 59, 999);
+
+    // Check if there's ANY overlap between the week and subscription period
+    // Overlap exists if: weekStart <= subscriptionEnd AND weekEnd >= subscriptionStart
+    return weekStartOnly <= rangeEndOnly && weekEndOnly >= rangeStartOnly;
+  }, [state.subscribed, getMealPlanningDateRange]);
+
   const cancelSubscription = async () => {
     try {
       const response = await supabase.functions.invoke('cancel-subscription');
@@ -261,5 +307,6 @@ export function useSubscription() {
     cancelSubscription,
     getMealPlanningDateRange,
     canGenerateMealPlanForDate,
+    canGenerateWeekPlan,
   };
 }
