@@ -1,7 +1,7 @@
 import { useState, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Send, Loader2 } from 'lucide-react';
+import { ArrowUp, Loader2 } from 'lucide-react';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
@@ -26,28 +26,36 @@ export function ChatInput({ onSend, isLoading, placeholder }: ChatInputProps) {
     }
   };
 
+  const canSend = input.trim() && !isLoading;
+
   return (
-    <div className="flex gap-2 p-4 border-t border-border bg-card">
-      <Textarea
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder || "Escribe tus ingredientes o pregunta una receta..."}
-        className="min-h-[60px] resize-none bg-background"
-        disabled={isLoading}
-      />
-      <Button
-        onClick={handleSend}
-        disabled={!input.trim() || isLoading}
-        size="icon"
-        className="h-[60px] w-[60px] shrink-0"
-      >
-        {isLoading ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <Send className="h-5 w-5" />
-        )}
-      </Button>
+    <div className="p-4 border-t border-border bg-card">
+      <div className="relative max-w-3xl mx-auto">
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder || "Escribe tus ingredientes o pregunta una receta..."}
+          className="min-h-[52px] max-h-[200px] resize-none bg-background pr-14 py-3 rounded-2xl border-2 focus:border-primary/50 transition-colors"
+          disabled={isLoading}
+        />
+        <Button
+          onClick={handleSend}
+          disabled={!canSend}
+          size="icon"
+          className={`absolute right-2 bottom-2 h-9 w-9 rounded-xl transition-all ${
+            canSend
+              ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+              : 'bg-muted text-muted-foreground'
+          }`}
+        >
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <ArrowUp className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
