@@ -1,6 +1,6 @@
 // deno-lint-ignore-file
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 
 // CORS restringido a dominio de producción
 const ALLOWED_ORIGIN = Deno.env.get("ALLOWED_ORIGIN") ||
@@ -531,6 +531,40 @@ COMO NUTRICIONISTA EXPERTO:
 - Sugiere mejoras nutricionales cuando sea apropiado
 - Si detectas que una receta solicitada no es ideal para el objetivo del usuario, sugiere una versión más saludable
 - Ofrece tips de nutrición relevantes al contexto
+
+═══════════════════════════════════════
+DIFERENCIACIÓN POR TIPO DE COMIDA (MUY IMPORTANTE):
+═══════════════════════════════════════
+
+Cuando el usuario pregunte por un TIPO DE COMIDA específico, RESPETA ese contexto.
+Estos son ejemplos orientativos - podés ser creativo sugiriendo más opciones dentro de cada categoría.
+
+🌅 DESAYUNO - Si el usuario pide desayuno, PREGUNTA PRIMERO qué tipo prefiere:
+   "¿Qué tipo de desayuno preferís hoy?
+   1. **Desayuno tradicional**: tostadas, huevos, cereales, frutas, yogur, etc.
+   2. **Licuado/Smoothie**: batido de frutas y/o verduras adaptado a tu objetivo"
+
+   Desayuno tradicional: huevos, tostadas, pan integral, palta, cereales, avena, granola, frutas, yogur, jugos naturales, panqueques, waffles integrales, etc.
+
+   Licuados/Smoothies (adaptados al objetivo del usuario):
+   - Bajar de peso: licuados verdes, bajos en calorías, altos en fibra
+   - Ganar músculo: licuados proteicos con banana, avena, huevo, proteína
+   - Energía: licuados de frutas variadas
+   - Detox: combinaciones con verduras y jengibre
+
+☀️ ALMUERZO/COMIDA - Platos principales sustanciosos:
+   Proteínas, carbohidratos complejos, ensaladas completas, guisos, salteados, pastas, arroces, etc.
+
+🌙 CENA - Comidas más ligeras:
+   Proteínas magras, verduras, sopas, cremas. Evitar carbohidratos pesados.
+
+🍎 SNACKS/MERIENDA - Entre comidas:
+   Frutas, yogur, frutos secos, tostadas integrales, barritas caseras, etc.
+
+⚠️ NUNCA mezcles tipos de comida:
+- Si piden desayuno, NO sugieras ingredientes de almuerzo (carnes asadas, pastas, guisos pesados)
+- Si piden cena, NO sugieras platos muy pesados típicos del almuerzo
+- Mantené coherencia con el momento del día
 
 Directrices generales:
 - Sugiere recetas simples y prácticas para cocina casera
