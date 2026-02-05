@@ -78,14 +78,19 @@ serve(async (req) => {
 
       // Create a synthetic invoice from the subscription data
       // Show invoice if there's a payment or active subscription
-      if (subscription.status === 'active' || subscription.mercadopago_payment_id || subscription.mercadopago_subscription_id) {
+      if (subscription.status === 'active' || subscription.mercadopago_payment_id || subscription.mercadopago_subscription_id || subscription.cancel_at_period_end) {
         const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start).getTime() / 1000 : Date.now() / 1000;
         const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end).getTime() / 1000 : Date.now() / 1000;
 
-        // Get the actual price from the subscription or use current fixed prices
+        // Determine plan type based on period duration (more reliable than stored plan)
+        const periodDays = Math.round((periodEnd - periodStart) / (60 * 60 * 24));
+        const isWeekly = periodDays <= 8; // 7 days with some tolerance
+
+        // Get the actual price based on period
         const weeklyPrice = 7500;
         const monthlyPrice = 25000;
-        const amount = subscription.plan === 'weekly' ? weeklyPrice : monthlyPrice;
+        const amount = isWeekly ? weeklyPrice : monthlyPrice;
+        const actualPlan = isWeekly ? 'weekly' : 'monthly';
 
         const syntheticInvoice = {
           id: subscription.mercadopago_payment_id || subscription.mercadopago_subscription_id,
@@ -105,7 +110,7 @@ serve(async (req) => {
             last4: null,
             brand: 'Mercado Pago',
           },
-          description: `Suscripción ${subscription.plan === 'weekly' ? 'Semanal' : 'Mensual'} - Mercado Pago`,
+          description: `Suscripción ${actualPlan === 'weekly' ? 'Semanal' : 'Mensual'} - Mercado Pago`,
         };
 
         formattedInvoices.push(syntheticInvoice);

@@ -377,40 +377,49 @@ serve(async (req) => {
     });
 
     // 5. Calculate the actual date range being generated
+    // For single meal replacement, only validate that specific date
+    const actualDaysToGenerate = singleMeal ? 1 : daysToGenerate;
+
     const firstGeneratedDate = new Date(weekStartDate);
     firstGeneratedDate.setDate(firstGeneratedDate.getDate() + startDayOffset);
     firstGeneratedDate.setHours(0, 0, 0, 0);
 
     const lastGeneratedDate = new Date(firstGeneratedDate);
-    lastGeneratedDate.setDate(lastGeneratedDate.getDate() + (daysToGenerate - 1));
+    lastGeneratedDate.setDate(lastGeneratedDate.getDate() + (actualDaysToGenerate - 1));
     lastGeneratedDate.setHours(23, 59, 59, 999);
 
     console.log('Generation range:', {
       firstGeneratedDate,
-      lastGeneratedDate
+      lastGeneratedDate,
+      singleMeal,
+      actualDaysToGenerate
     });
 
-    // 6. Validate dates are within subscription period
-    if (firstGeneratedDate < periodStart) {
-      return new Response(
-        JSON.stringify({
-          error: 'date_before_period',
-          message: `No puedes generar comidas antes del inicio de tu período de suscripción (${periodStart.toLocaleDateString('es-AR')})`
-        }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // 6. Check if there's ANY overlap between generation range and subscription period
+    // We don't fail if partial overlap - we just generate for the overlapping days
+    const hasOverlap = firstGeneratedDate <= periodEnd && lastGeneratedDate >= periodStart;
 
-    if (lastGeneratedDate > periodEnd) {
-      return new Response(
-        JSON.stringify({
-          error: 'date_after_period',
-          message: `No puedes generar comidas después del final de tu período de suscripción (${periodEnd.toLocaleDateString('es-AR')}). ${subscription.plan === 'weekly' ? 'Con plan semanal puedes planificar hasta 7 días adelante.' : 'Con plan mensual puedes planificar hasta 30 días adelante.'}`,
-          period_end: periodEnd.toISOString(),
-          plan: subscription.plan
-        }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!hasOverlap) {
+      // No overlap at all - this is an error
+      if (lastGeneratedDate < periodStart) {
+        return new Response(
+          JSON.stringify({
+            error: 'date_before_period',
+            message: `No puedes generar comidas antes del inicio de tu período de suscripción (${periodStart.toLocaleDateString('es-AR')})`
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } else {
+        return new Response(
+          JSON.stringify({
+            error: 'date_after_period',
+            message: `No puedes generar comidas después del final de tu período de suscripción (${periodEnd.toLocaleDateString('es-AR')}). ${subscription.plan === 'weekly' ? 'Con plan semanal puedes planificar hasta 7 días adelante.' : 'Con plan mensual puedes planificar hasta 30 días adelante.'}`,
+            period_end: periodEnd.toISOString(),
+            plan: subscription.plan
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // 7. Validate not planning too far in the past
@@ -427,6 +436,42 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // 8. Calculate the actual days to generate (only within subscription period)
+    // Adjust startDayOffset and daysToGenerate to only cover subscription period
+    let effectiveStartDayOffset = startDayOffset;
+    let effectiveDaysToGenerate = actualDaysToGenerate;
+
+    // If first generated date is before period start, adjust start offset
+    if (firstGeneratedDate < periodStart) {
+      const daysDiff = Math.ceil((periodStart.getTime() - firstGeneratedDate.getTime()) / (1000 * 60 * 60 * 24));
+      effectiveStartDayOffset = startDayOffset + daysDiff;
+      effectiveDaysToGenerate = actualDaysToGenerate - daysDiff;
+    }
+
+    // If last generated date is after period end, reduce days to generate
+    if (lastGeneratedDate > periodEnd) {
+      const daysDiff = Math.ceil((lastGeneratedDate.getTime() - periodEnd.getTime()) / (1000 * 60 * 60 * 24));
+      effectiveDaysToGenerate = effectiveDaysToGenerate - daysDiff;
+    }
+
+    // Ensure we have at least 1 day to generate
+    if (effectiveDaysToGenerate <= 0) {
+      return new Response(
+        JSON.stringify({
+          error: 'no_valid_days',
+          message: 'No hay días válidos dentro de tu período de suscripción para generar comidas'
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Effective generation range:', {
+      effectiveStartDayOffset,
+      effectiveDaysToGenerate,
+      originalStartDayOffset: startDayOffset,
+      originalDaysToGenerate: actualDaysToGenerate
+    });
 
     console.log('✅ Subscription validation passed');
     // =================================================================
@@ -572,8 +617,8 @@ serve(async (req) => {
     }
 
     // Generate meals for each day and meal type
-    // Start from startDayOffset (0 = Monday, 6 = Sunday)
-    for (let day = startDayOffset; day < startDayOffset + daysToGenerate; day++) {
+    // Start from effectiveStartDayOffset, only for days within subscription period
+    for (let day = effectiveStartDayOffset; day < effectiveStartDayOffset + effectiveDaysToGenerate; day++) {
       const currentDate = new Date(finalWeekStart);
       currentDate.setDate(currentDate.getDate() + day);
       const dateStr = currentDate.toISOString().split('T')[0];
