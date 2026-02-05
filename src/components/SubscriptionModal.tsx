@@ -481,38 +481,41 @@ export function SubscriptionModal({
                         plan.popular ? 'border-primary shadow-2xl ring-2 ring-primary/20' : ''
                       } ${isCurrent ? 'bg-accent/30' : ''} transition-all hover:shadow-lg`}
                     >
-                      {/* Popular Badge with animation */}
-                      {plan.popular && (
-                        <motion.div
-                          animate={{
-                            scale: [1, 1.05, 1],
-                          }}
-                          transition={{
-                            duration: 2,
-                            repeat: Infinity,
-                            repeatType: 'reverse',
-                          }}
-                        >
-                          <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-purple-600 text-white shadow-lg">
-                            <Star className="h-3 w-3 mr-1" />
-                            Más Popular
-                          </Badge>
-                        </motion.div>
-                      )}
-
-                      {/* Savings Badge */}
-                      {'savings' in plan && plan.savings && (
-                        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg">
-                          <TrendingDown className="h-3 w-3 mr-1" />
-                          Ahorra {plan.savings}%
-                        </Badge>
-                      )}
-
-                      {/* Current Plan Badge */}
-                      {isCurrent && (
-                        <Badge variant="secondary" className="absolute -top-3 right-2">
+                      {/* Current Plan Badge - takes priority over other badges */}
+                      {isCurrent ? (
+                        <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-purple-600 text-white shadow-lg">
+                          <Check className="h-3 w-3 mr-1" />
                           Tu plan actual
                         </Badge>
+                      ) : (
+                        <>
+                          {/* Popular Badge with animation */}
+                          {plan.popular && (
+                            <motion.div
+                              animate={{
+                                scale: [1, 1.05, 1],
+                              }}
+                              transition={{
+                                duration: 2,
+                                repeat: Infinity,
+                                repeatType: 'reverse',
+                              }}
+                            >
+                              <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-purple-600 text-white shadow-lg">
+                                <Star className="h-3 w-3 mr-1" />
+                                Más Popular
+                              </Badge>
+                            </motion.div>
+                          )}
+
+                          {/* Savings Badge */}
+                          {'savings' in plan && plan.savings && (
+                            <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg">
+                              <TrendingDown className="h-3 w-3 mr-1" />
+                              Ahorra {plan.savings}%
+                            </Badge>
+                          )}
+                        </>
                       )}
 
                       <CardHeader className="text-center pb-4">

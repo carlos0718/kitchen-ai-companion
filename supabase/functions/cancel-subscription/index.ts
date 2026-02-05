@@ -78,27 +78,33 @@ serve(async (req) => {
           );
 
           if (!cancelResponse.ok) {
-            const errorText = await cancelResponse.text();
-            console.error("[CANCEL-SUBSCRIPTION] MP API error:", errorText);
-            throw new Error(`Failed to cancel MP subscription: ${cancelResponse.status}`);
-          }
+            const errorData = await cancelResponse.json().catch(() => ({}));
+            console.error("[CANCEL-SUBSCRIPTION] MP API error:", JSON.stringify(errorData));
 
-          console.log("[CANCEL-SUBSCRIPTION] MP subscription canceled successfully");
+            // If already cancelled, that's fine - continue to update database
+            if (errorData.message?.includes("cancelled") || errorData.message?.includes("canceled")) {
+              console.log("[CANCEL-SUBSCRIPTION] MP subscription was already cancelled");
+            } else {
+              console.error("[CANCEL-SUBSCRIPTION] Failed to cancel MP subscription:", cancelResponse.status);
+            }
+          } else {
+            console.log("[CANCEL-SUBSCRIPTION] MP subscription canceled successfully");
+          }
         } catch (mpError) {
           console.error("[CANCEL-SUBSCRIPTION] Error canceling MP subscription:", mpError);
           // Continue to update database even if MP cancellation fails
         }
       }
 
-      // Update database to mark as canceled
+      // Update database - keep subscription active until period ends
+      // The user already paid for this period, so they should keep access
       const { error: updateError } = await supabaseClient
         .from('user_subscriptions')
         .update({
-          status: 'canceled',
-          plan: 'free',
-          subscribed: false,
+          cancel_at_period_end: true,
           canceled_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          // Keep subscribed: true and status: 'active' until period actually ends
         })
         .eq('user_id', user.id);
 
@@ -107,10 +113,22 @@ serve(async (req) => {
         throw updateError;
       }
 
+      // Return info about when access will end
+      const periodEnd = dbSubscription.current_period_end
+        ? new Date(dbSubscription.current_period_end).toLocaleDateString('es-AR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })
+        : null;
+
       return new Response(JSON.stringify({
         success: true,
-        message: 'Suscripción cancelada exitosamente',
+        message: periodEnd
+          ? `Tu suscripción se cancelará el ${periodEnd}. Mantendrás el acceso hasta esa fecha.`
+          : 'Tu suscripción ha sido cancelada.',
         payment_gateway: 'mercadopago',
+        cancel_at: dbSubscription.current_period_end,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
@@ -141,7 +159,6 @@ serve(async (req) => {
       .from('user_subscriptions')
       .update({
         cancel_at_period_end: true,
-        canceled_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', user.id);

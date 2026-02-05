@@ -81,16 +81,18 @@ serve(async (req) => {
       const periodEnd = new Date(dbSubscription.current_period_end);
       const isExpired = periodEnd < now;
 
-      if (isExpired && dbSubscription.status === 'active') {
-        console.log("[CHECK-SUBSCRIPTION] Mercado Pago subscription expired - auto-expiring");
+      // Check if subscription was cancelled and period has ended
+      if (isExpired && (dbSubscription.status === 'active' || dbSubscription.cancel_at_period_end)) {
+        console.log("[CHECK-SUBSCRIPTION] Mercado Pago subscription period ended - finalizing cancellation");
 
-        // Auto-expire subscription
+        // Finalize cancellation - now actually remove access
         await supabaseClient
           .from('user_subscriptions')
           .update({
             status: 'canceled',
             plan: 'free',
             subscribed: false,
+            cancel_at_period_end: false,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', user.id);
@@ -100,7 +102,7 @@ serve(async (req) => {
           subscribed: false,
           plan: 'free',
           status: 'expired',
-          payment_gateway: 'mercadopago',
+          payment_gateway: dbSubscription.payment_gateway,
           is_recurring: false,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -116,15 +118,20 @@ serve(async (req) => {
       }
 
       // Return current Mercado Pago subscription status
+      // User keeps access even if cancel_at_period_end is true, until period ends
+      const isStillActive = dbSubscription.subscribed || dbSubscription.status === 'active';
+
       return new Response(JSON.stringify({
-        subscribed: dbSubscription.subscribed || dbSubscription.status === 'active',
+        subscribed: isStillActive,
         plan: dbSubscription.plan,
-        status: dbSubscription.status,
-        payment_gateway: 'mercadopago',
-        is_recurring: dbSubscription.is_recurring,
+        status: dbSubscription.cancel_at_period_end ? 'canceling' : dbSubscription.status,
+        payment_gateway: dbSubscription.payment_gateway,
+        is_recurring: dbSubscription.is_recurring && !dbSubscription.cancel_at_period_end,
         current_period_start: dbSubscription.current_period_start,
         current_period_end: dbSubscription.current_period_end,
         days_until_expiration: daysUntilExpiration,
+        cancel_at_period_end: dbSubscription.cancel_at_period_end || false,
+        canceled_at: dbSubscription.canceled_at,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
