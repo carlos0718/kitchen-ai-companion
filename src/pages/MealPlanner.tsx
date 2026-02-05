@@ -14,7 +14,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Loader2, ChevronLeft, ChevronRight, Sparkles, ShoppingCart, Lock, Download } from 'lucide-react';
 import { toast } from 'sonner';
 
-const DAYS_OF_WEEK = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+// Dynamic day names based on actual day of week
+const DAY_NAMES: Record<number, string> = {
+  0: 'Dom',
+  1: 'Lun',
+  2: 'Mar',
+  3: 'Mié',
+  4: 'Jue',
+  5: 'Vie',
+  6: 'Sáb',
+};
 
 const MEAL_TYPE_LABELS = {
   breakfast: 'Desayuno',
@@ -90,20 +99,18 @@ export function MealPlanner() {
     });
   }, []);
 
-  // Auto-navigate to subscription start week on first load
+  // Auto-navigate to today when subscription loads
+  // The useMealPlanner hook will calculate the correct 7-day period based on subscription start
   useEffect(() => {
     if (subscribed && currentPeriodStart && !subLoading && !hasAutoNavigated.current) {
-      const subscriptionStart = new Date(currentPeriodStart);
-      const today = new Date();
-
-      // If subscription start is in the future or current period, navigate to that week
-      // This ensures the user sees their subscription period days
-      if (subscriptionStart > today) {
-        setCurrentWeekDate(subscriptionStart);
-      }
+      // Navigate to today - the hook will calculate the correct period
+      setCurrentWeekDate(new Date());
       hasAutoNavigated.current = true;
     }
   }, [subscribed, currentPeriodStart, subLoading]);
+
+  // Parse subscription start date for subscription-based week calculation
+  const subscriptionStartDate = currentPeriodStart ? new Date(currentPeriodStart) : undefined;
 
   const {
     mealPlan,
@@ -117,7 +124,7 @@ export function MealPlanner() {
     generateWeeklyPlan,
     generateDailyPlan,
     toggleMealCompleted,
-  } = useMealPlanner(userId || '', currentWeekDate);
+  } = useMealPlanner(userId || '', currentWeekDate, subscribed ? subscriptionStartDate : undefined);
 
   // Navigate to previous week
   const goToPreviousWeek = () => {
@@ -490,10 +497,11 @@ export function MealPlanner() {
 
         {/* Weekly Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-          {DAYS_OF_WEEK.map((dayName, dayIndex) => {
+          {Array.from({ length: 7 }, (_, dayIndex) => {
             const date = new Date(weekStart);
             date.setDate(date.getDate() + dayIndex);
             const isToday = new Date().toDateString() === date.toDateString();
+            const dayName = DAY_NAMES[date.getDay()];
 
             return (
               <Card

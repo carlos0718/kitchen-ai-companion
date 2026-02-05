@@ -52,7 +52,35 @@ interface Recipe {
 }
 
 // Helper to get week start/end dates
-function getWeekDates(date: Date): { start: Date; end: Date } {
+// If subscriptionStartDate is provided, use it as the base for 7-day periods
+function getWeekDates(date: Date, subscriptionStartDate?: Date): { start: Date; end: Date } {
+  if (subscriptionStartDate) {
+    // Calculate which 7-day period we're in relative to subscription start
+    const subStart = new Date(subscriptionStartDate);
+    subStart.setHours(0, 0, 0, 0);
+
+    const currentDate = new Date(date);
+    currentDate.setHours(0, 0, 0, 0);
+
+    // Calculate days since subscription start
+    const daysSinceStart = Math.floor((currentDate.getTime() - subStart.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Calculate which 7-day period (0, 1, 2, etc.)
+    const periodNumber = Math.floor(daysSinceStart / 7);
+
+    // Calculate period start date
+    const start = new Date(subStart);
+    start.setDate(start.getDate() + (periodNumber * 7));
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  }
+
+  // Fallback to calendar week (Monday-Sunday) for non-subscribed users
   const start = new Date(date);
   const day = start.getDay();
   const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Monday
@@ -66,13 +94,13 @@ function getWeekDates(date: Date): { start: Date; end: Date } {
   return { start, end };
 }
 
-export function useMealPlanner(userId: string, weekDate: Date = new Date()) {
+export function useMealPlanner(userId: string, weekDate: Date = new Date(), subscriptionStartDate?: Date) {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [mealPlanItems, setMealPlanItems] = useState<MealPlanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  const { start: weekStart, end: weekEnd } = getWeekDates(weekDate);
+  const { start: weekStart, end: weekEnd } = getWeekDates(weekDate, subscriptionStartDate);
 
   // Load or create meal plan for the week
   const loadMealPlan = async () => {
