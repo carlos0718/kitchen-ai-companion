@@ -184,7 +184,7 @@ const Index = () => {
               {/* Free Plan */}
               <div className="p-8 border border-border rounded-lg bg-card">
                 <h3 className="text-2xl font-bold mb-2">Plan Gratuito</h3>
-                <p className="text-4xl font-bold text-primary mb-4">$0<span className="text-lg text-muted-foreground">/semana</span></p>
+                <p className="text-4xl font-bold text-primary mb-4">USD 0<span className="text-lg text-muted-foreground">/semana</span></p>
                 <ul className="text-left space-y-3 mb-6">
                   <li className="flex items-start gap-2">
                     <span className="text-primary">✓</span>
@@ -207,7 +207,7 @@ const Index = () => {
                   Más Popular
                 </div>
                 <h3 className="text-2xl font-bold mb-2">Plan Semanal</h3>
-                <p className="text-4xl font-bold text-primary mb-4">$4.99<span className="text-lg text-muted-foreground">/semana</span></p>
+                <p className="text-4xl font-bold text-primary mb-4">USD 5<span className="text-lg text-muted-foreground">/semana</span></p>
                 <ul className="text-left space-y-3 mb-6">
                   <li className="flex items-start gap-2">
                     <span className="text-primary">✓</span>
@@ -234,7 +234,7 @@ const Index = () => {
                   Mejor Valor
                 </div>
                 <h3 className="text-2xl font-bold mb-2">Plan Mensual</h3>
-                <p className="text-4xl font-bold text-primary mb-4">$14.99<span className="text-lg text-muted-foreground">/mes</span></p>
+                <p className="text-4xl font-bold text-primary mb-4">USD 17<span className="text-lg text-muted-foreground">/mes</span></p>
                 <ul className="text-left space-y-3 mb-6">
                   <li className="flex items-start gap-2">
                     <span className="text-primary">✓</span>
@@ -254,7 +254,7 @@ const Index = () => {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-primary">✓</span>
-                    <span className="text-sm text-muted-foreground">Ahorra $5 al mes</span>
+                    <span className="text-sm text-muted-foreground">Ahorra USD 3 al mes</span>
                   </li>
                 </ul>
               </div>

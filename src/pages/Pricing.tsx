@@ -32,8 +32,8 @@ const getPricing = (currency: 'USD' | 'ARS', _exchangeRate?: number) => {
     };
   }
   return {
-    weekly: { price: 4.99, display: '$4.99' },
-    monthly: { price: 14.99, display: '$14.99' },
+    weekly: { price: 5, display: 'USD 5' },
+    monthly: { price: 17, display: 'USD 17' },
   };
 };
 
@@ -218,7 +218,7 @@ export function Pricing() {
     if (currency === 'ARS') {
       return `$${amount.toLocaleString('es-AR')}`;
     }
-    return `$${amount.toFixed(2)}`;
+    return `USD ${Math.round(amount)}`;
   };
 
   return (
@@ -347,7 +347,7 @@ export function Pricing() {
                         <p className="text-xs text-muted-foreground mt-2">
                           {currency === 'ARS'
                             ? `$${Math.round(monthlyCost / 4).toLocaleString('es-AR')}/semana`
-                            : `$${(monthlyCost / 4).toFixed(2)}/semana`
+                            : `USD ${(monthlyCost / 4).toFixed(2)}/semana`
                           }
                         </p>
                       )}
