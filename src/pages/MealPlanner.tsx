@@ -340,7 +340,8 @@ export function MealPlanner() {
   // Check if shopping list can be generated
   const canGenerateShoppingList = mealPlanItems.length > 0;
 
-  if (!userId || loading) {
+  // Show loading while user or subscription is loading
+  if (!userId || loading || subLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

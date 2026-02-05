@@ -355,9 +355,16 @@ serve(async (req) => {
     }
 
     // 4. Calculate target dates for generation
+    // Normalize dates to start of day for fair comparison
     const periodStart = new Date(subscription.current_period_start);
+    periodStart.setHours(0, 0, 0, 0);
+
     const periodEnd = new Date(subscription.current_period_end);
+    periodEnd.setHours(23, 59, 59, 999);
+
     const weekStartDate = new Date(finalWeekStart);
+    weekStartDate.setHours(0, 0, 0, 0);
+
     const now = new Date();
 
     console.log('Date validation:', {
@@ -372,9 +379,11 @@ serve(async (req) => {
     // 5. Calculate the actual date range being generated
     const firstGeneratedDate = new Date(weekStartDate);
     firstGeneratedDate.setDate(firstGeneratedDate.getDate() + startDayOffset);
+    firstGeneratedDate.setHours(0, 0, 0, 0);
 
     const lastGeneratedDate = new Date(firstGeneratedDate);
     lastGeneratedDate.setDate(lastGeneratedDate.getDate() + (daysToGenerate - 1));
+    lastGeneratedDate.setHours(23, 59, 59, 999);
 
     console.log('Generation range:', {
       firstGeneratedDate,
@@ -407,6 +416,7 @@ serve(async (req) => {
     // 7. Validate not planning too far in the past
     const oneDayAgo = new Date(now);
     oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    oneDayAgo.setHours(0, 0, 0, 0);
 
     if (lastGeneratedDate < oneDayAgo) {
       return new Response(
