@@ -10,10 +10,12 @@ import {Button} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
-import {User as UserIcon, Loader2} from 'lucide-react';
+import {User as UserIcon, Loader2, Crown, Sparkles} from 'lucide-react';
 import {BillingHistory} from '@/components/BillingHistory';
 import {PaymentMethodCard} from '@/components/PaymentMethodCard';
 import {NextBillingCard} from '@/components/NextBillingCard';
+import {SubscriptionModal} from '@/components/SubscriptionModal';
+import {useSubscription} from '@/hooks/useSubscription';
 
 const DIETARY_RESTRICTIONS = [
 	{id: 'vegetariano', label: 'Vegetariano'},
@@ -49,6 +51,16 @@ export function Profile() {
 	const {section} = useParams<{section?: string}>();
 	const navigate = useNavigate();
 	const [user, setUser] = useState<User | null>(null);
+	const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
+	// Subscription hook
+	const {
+		subscribed,
+		plan,
+		createCheckout,
+		openCustomerPortal
+	} = useSubscription();
+
 	const [formData, setFormData] = useState({
 		name: '',
 		last_name: '',
@@ -426,11 +438,74 @@ export function Profile() {
 				{/* Billing Section */}
 				{section === 'billing' && (
 					<div className='space-y-6'>
+						{/* Current Plan Card */}
+						<Card className={subscribed ? 'border-primary/50 bg-primary/5' : ''}>
+							<CardHeader>
+								<div className='flex items-center justify-between'>
+									<div className='flex items-center gap-3'>
+										<div className={`w-10 h-10 rounded-full flex items-center justify-center ${subscribed ? 'bg-primary' : 'bg-muted'}`}>
+											<Crown className={`h-5 w-5 ${subscribed ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
+										</div>
+										<div>
+											<CardTitle className='text-lg'>
+												{subscribed ? `Plan ${plan === 'weekly' ? 'Semanal' : 'Mensual'}` : 'Plan Gratuito'}
+											</CardTitle>
+											<CardDescription>
+												{subscribed
+													? 'Disfruta de todas las funciones premium'
+													: 'Acceso limitado a funciones básicas'}
+											</CardDescription>
+										</div>
+									</div>
+								</div>
+							</CardHeader>
+							<CardContent>
+								<div className='flex flex-col sm:flex-row gap-3'>
+									{subscribed ? (
+										<>
+											{plan === 'weekly' && (
+												<Button
+													onClick={() => setShowSubscriptionModal(true)}
+													className='gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90'
+												>
+													<Sparkles className='h-4 w-4' />
+													Cambiar a Plan Mensual (Ahorrá 16%)
+												</Button>
+											)}
+											<Button
+												variant='outline'
+												onClick={() => setShowSubscriptionModal(true)}
+											>
+												Ver todos los planes
+											</Button>
+										</>
+									) : (
+										<Button
+											onClick={() => setShowSubscriptionModal(true)}
+											className='gap-2 bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90'
+										>
+											<Sparkles className='h-4 w-4' />
+											Mejorar a Premium
+										</Button>
+									)}
+								</div>
+							</CardContent>
+						</Card>
+
 						<div className='grid gap-6 md:grid-cols-2'>
 							<PaymentMethodCard />
 							<NextBillingCard />
 						</div>
 						<BillingHistory />
+
+						{/* Subscription Modal */}
+						<SubscriptionModal
+							open={showSubscriptionModal}
+							onOpenChange={setShowSubscriptionModal}
+							currentPlan={plan}
+							onSubscribe={createCheckout}
+							onManage={openCustomerPortal}
+						/>
 					</div>
 				)}
 

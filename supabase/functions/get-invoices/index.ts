@@ -77,21 +77,29 @@ serve(async (req) => {
       console.log("[GET-INVOICES] Found Mercado Pago subscription - creating synthetic invoice");
 
       // Create a synthetic invoice from the subscription data
-      if (subscription.mercadopago_payment_id && subscription.status === 'active') {
+      // Show invoice if there's a payment or active subscription
+      if (subscription.status === 'active' || subscription.mercadopago_payment_id || subscription.mercadopago_subscription_id) {
         const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start).getTime() / 1000 : Date.now() / 1000;
         const periodEnd = subscription.current_period_end ? new Date(subscription.current_period_end).getTime() / 1000 : Date.now() / 1000;
 
+        // Get the actual price from the subscription or use current fixed prices
+        const weeklyPrice = 7500;
+        const monthlyPrice = 25000;
+        const amount = subscription.plan === 'weekly' ? weeklyPrice : monthlyPrice;
+
         const syntheticInvoice = {
-          id: subscription.mercadopago_payment_id,
-          number: null,
-          amount: subscription.plan === 'weekly' ? 2500 : 8000, // ARS
+          id: subscription.mercadopago_payment_id || subscription.mercadopago_subscription_id,
+          number: subscription.mercadopago_payment_id ? subscription.mercadopago_payment_id.toString() : null,
+          amount: amount,
           currency: 'ARS',
           status: 'paid',
           created: periodStart,
           period_start: periodStart,
           period_end: periodEnd,
-          invoice_pdf: null,
-          hosted_invoice_url: null,
+          invoice_pdf: null, // MercadoPago doesn't provide PDF invoices directly
+          hosted_invoice_url: subscription.mercadopago_subscription_id
+            ? `https://www.mercadopago.com.ar/subscriptions/${subscription.mercadopago_subscription_id}`
+            : null,
           payment_method: {
             type: 'mercadopago',
             last4: null,

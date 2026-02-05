@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Download, ExternalLink, FileText, AlertCircle, CreditCard } from 'lucide-react';
+import { ExternalLink, FileText, AlertCircle, CreditCard } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -94,14 +94,6 @@ export function BillingHistory() {
       style: 'currency',
       currency: currency,
     }).format(amount);
-  };
-
-  const handleDownloadPDF = (url: string | null) => {
-    if (!url) {
-      toast.error('PDF no disponible');
-      return;
-    }
-    window.open(url, '_blank');
   };
 
   const handleViewOnline = (url: string | null) => {
@@ -223,28 +215,16 @@ export function BillingHistory() {
                 </div>
               </div>
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDownloadPDF(invoice.invoice_pdf)}
-                  disabled={!invoice.invoice_pdf}
-                  className="gap-2"
-                >
-                  <Download className="h-4 w-4" />
-                  PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleViewOnline(invoice.hosted_invoice_url)}
-                  disabled={!invoice.hosted_invoice_url}
-                  className="gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Ver en línea
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleViewOnline(invoice.hosted_invoice_url)}
+                disabled={!invoice.hosted_invoice_url}
+                className="gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Ver en línea
+              </Button>
             </div>
           ))}
         </div>
