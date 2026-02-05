@@ -66,7 +66,8 @@ export function useSubscription() {
 
       // Compute derived states
       const isPastDue = status === 'past_due';
-      const isCanceling = cancelAtPeriodEnd && status === 'active';
+      // isCanceling is true when status is 'canceling' OR when cancel_at_period_end is true
+      const isCanceling = status === 'canceling' || cancelAtPeriodEnd;
       const canUsePremiumFeatures = subscribed && !isPastDue && status !== 'unpaid';
 
       setState({
