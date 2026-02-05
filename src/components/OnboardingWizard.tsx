@@ -21,7 +21,7 @@ type FormData = {
   name: string;
   last_name: string;
   country: string;
-  age: number | null;
+  birth_year: number | null;
   height: number | null;
   weight: number | null;
   gender: string;
@@ -143,7 +143,7 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
       name: '',
       last_name: '',
       country: '',
-      age: null,
+      birth_year: null,
       height: null,
       weight: null,
       gender: '',
@@ -205,9 +205,17 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
 
   const onSubmit = async (data: FormData) => {
     try {
+      // Calculate age from birth year
+      const currentYear = new Date().getFullYear();
+      const age = data.birth_year ? currentYear - data.birth_year : null;
+
+      // Remove birth_year and add calculated age
+      const { birth_year, ...restData } = data;
+
       await createProfile({
         user_id: user.id,
-        ...data,
+        ...restData,
+        age,
         onboarding_completed: true,
       });
       onComplete();
@@ -286,39 +294,52 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">País</Label>
-                <Select
-                  value={watch('country') || ''}
-                  onValueChange={(value) => setValue('country', value)}
-                >
-                  <SelectTrigger id="country">
-                    <SelectValue placeholder="Selecciona tu país" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AR">Argentina</SelectItem>
-                    <SelectItem value="BO">Bolivia</SelectItem>
-                    <SelectItem value="CL">Chile</SelectItem>
-                    <SelectItem value="CO">Colombia</SelectItem>
-                    <SelectItem value="CR">Costa Rica</SelectItem>
-                    <SelectItem value="CU">Cuba</SelectItem>
-                    <SelectItem value="EC">Ecuador</SelectItem>
-                    <SelectItem value="SV">El Salvador</SelectItem>
-                    <SelectItem value="ES">España</SelectItem>
-                    <SelectItem value="GT">Guatemala</SelectItem>
-                    <SelectItem value="HN">Honduras</SelectItem>
-                    <SelectItem value="MX">México</SelectItem>
-                    <SelectItem value="NI">Nicaragua</SelectItem>
-                    <SelectItem value="PA">Panamá</SelectItem>
-                    <SelectItem value="PY">Paraguay</SelectItem>
-                    <SelectItem value="PE">Perú</SelectItem>
-                    <SelectItem value="PR">Puerto Rico</SelectItem>
-                    <SelectItem value="DO">República Dominicana</SelectItem>
-                    <SelectItem value="UY">Uruguay</SelectItem>
-                    <SelectItem value="VE">Venezuela</SelectItem>
-                    <SelectItem value="US">Estados Unidos</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="country">País</Label>
+                  <Select
+                    value={watch('country') || ''}
+                    onValueChange={(value) => setValue('country', value)}
+                  >
+                    <SelectTrigger id="country">
+                      <SelectValue placeholder="Selecciona tu país" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AR">Argentina</SelectItem>
+                      <SelectItem value="BO">Bolivia</SelectItem>
+                      <SelectItem value="CL">Chile</SelectItem>
+                      <SelectItem value="CO">Colombia</SelectItem>
+                      <SelectItem value="CR">Costa Rica</SelectItem>
+                      <SelectItem value="CU">Cuba</SelectItem>
+                      <SelectItem value="EC">Ecuador</SelectItem>
+                      <SelectItem value="SV">El Salvador</SelectItem>
+                      <SelectItem value="ES">España</SelectItem>
+                      <SelectItem value="GT">Guatemala</SelectItem>
+                      <SelectItem value="HN">Honduras</SelectItem>
+                      <SelectItem value="MX">México</SelectItem>
+                      <SelectItem value="NI">Nicaragua</SelectItem>
+                      <SelectItem value="PA">Panamá</SelectItem>
+                      <SelectItem value="PY">Paraguay</SelectItem>
+                      <SelectItem value="PE">Perú</SelectItem>
+                      <SelectItem value="PR">Puerto Rico</SelectItem>
+                      <SelectItem value="DO">República Dominicana</SelectItem>
+                      <SelectItem value="UY">Uruguay</SelectItem>
+                      <SelectItem value="VE">Venezuela</SelectItem>
+                      <SelectItem value="US">Estados Unidos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="birth_year">Año de nacimiento</Label>
+                  <Input
+                    id="birth_year"
+                    type="number"
+                    {...register('birth_year', { valueAsNumber: true })}
+                    placeholder="1990"
+                    min="1920"
+                    max={new Date().getFullYear()}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -333,34 +354,22 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="age">Edad (años)</Label>
-                  <Input
-                    id="age"
-                    type="number"
-                    {...register('age', { valueAsNumber: true })}
-                    placeholder="25"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="gender">Género</Label>
-                  <Select
-                    value={watch('gender') || ''}
-                    onValueChange={(value) => setValue('gender', value)}
-                  >
-                    <SelectTrigger id="gender">
-                      <SelectValue placeholder="Seleccionar" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Masculino</SelectItem>
-                      <SelectItem value="female">Femenino</SelectItem>
-                      <SelectItem value="other">Otro</SelectItem>
-                      <SelectItem value="prefer_not_to_say">Prefiero no decir</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="gender">Género</Label>
+                <Select
+                  value={watch('gender') || ''}
+                  onValueChange={(value) => setValue('gender', value)}
+                >
+                  <SelectTrigger id="gender">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="male">Masculino</SelectItem>
+                    <SelectItem value="female">Femenino</SelectItem>
+                    <SelectItem value="other">Otro</SelectItem>
+                    <SelectItem value="prefer_not_to_say">Prefiero no decir</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
