@@ -14,6 +14,7 @@ interface UserProfile {
   weight?: number;
   bmi?: number;
   gender?: string;
+  country?: string;
   dietary_restrictions: string[];
   allergies: string[];
   cuisine_preferences: string[];
@@ -28,6 +29,56 @@ interface UserProfile {
   cooking_skill_level: string;
   max_prep_time: number;
 }
+
+const COUNTRY_NAMES: Record<string, string> = {
+  AR: "Argentina", PE: "Perú", MX: "México", CO: "Colombia", CL: "Chile",
+  EC: "Ecuador", VE: "Venezuela", UY: "Uruguay", PY: "Paraguay", BO: "Bolivia",
+  ES: "España", US: "Estados Unidos", CR: "Costa Rica", CU: "Cuba",
+  SV: "El Salvador", GT: "Guatemala", HN: "Honduras", NI: "Nicaragua",
+  PA: "Panamá", PR: "Puerto Rico", DO: "República Dominicana",
+};
+
+const INGREDIENT_LOCALIZATION_GUIDE = `
+GUÍA DE LOCALIZACIÓN DE INGREDIENTES POR PAÍS:
+
+🇦🇷 ARGENTINA:
+- Palta (no aguacate), Choclo (no elote), Poroto (no frijol), Ananá (no piña)
+- Frutilla (no fresa), Durazno (no melocotón), Banana (no plátano/guineo)
+- Papa (no patata), Arvejas (no guisantes), Manteca (no mantequilla)
+- Crema de leche (no nata), Morrón (no pimiento/ají), Zapallo (no calabaza)
+- Batata (no camote), Chaucha (no ejote), Ricota (no requesón)
+
+🇲🇽 MÉXICO:
+- Aguacate (no palta), Elote/mazorca (no choclo), Frijol (no poroto), Piña (no ananá)
+- Fresa (no frutilla), Plátano (no banana), Papa (no patata), Chícharo (no arvejas)
+- Mantequilla (no manteca), Crema (no nata), Queso cotija/oaxaca/panela
+- Chile/pimiento (no morrón), Calabaza (no zapallo), Camote (no batata), Ejote (no chaucha)
+
+🇵🇪 PERÚ:
+- Palta (no aguacate), Choclo (no elote), Frejol (no poroto), Piña (no ananá)
+- Fresa (no frutilla), Papa (variedad: amarilla, huayro, etc.), Arvejas (no chícharos)
+- Mantequilla (no manteca), Queso fresco/andino
+- Ají (no chile/morrón) — ají amarillo, ají panca, rocoto
+- Zapallo (no calabaza), Camote (no batata), Vainita (no ejote)
+
+🇨🇴 COLOMBIA:
+- Aguacate (no palta), Mazorca (no choclo), Fríjol (no poroto), Piña (no ananá)
+- Fresa (no frutilla), Banano (no plátano dulce), Papa (no patata), Arveja (no chícharos)
+- Mantequilla (no manteca), Queso costeño/campesino
+- Pimentón (no morrón), Ahuyama (no zapallo/calabaza), Habichuela (no ejote)
+
+🇨🇱 CHILE:
+- Palta (no aguacate), Choclo (no elote), Poroto (no frijol), Piña (no ananá)
+- Frutilla (no fresa), Plátano (no banana), Papa (no patata), Arvejas (no chícharos)
+- Mantequilla (no manteca), Queso chanco/fresco
+- Pimentón (no morrón), Zapallo (no calabaza), Camote (no batata), Poroto verde (no ejote)
+
+🇪🇸 ESPAÑA:
+- Aguacate (no palta), Mazorca (no choclo), Judía/alubia (no frijol), Piña (no ananá)
+- Fresa (no frutilla), Melocotón (no durazno), Plátano (no banana), Patata (no papa)
+- Guisantes (no arvejas), Mantequilla (no manteca), Nata (no crema de leche)
+- Queso manchego/fresco, Pimiento (no morrón), Calabaza (no zapallo), Boniato (no batata)
+`;
 
 interface GeneratedMeal {
   day_index: number; // 0-6 (Monday-Sunday)
@@ -189,6 +240,14 @@ ${previousMeals.map((meal, i) => `- Día ${i + 1}: ${meal}`).join('\n')}
 NO repitas recetas similares. Cada día debe tener una experiencia gastronómica distinta.\n`
     : '';
 
+  const userCountry = profile.country || "AR";
+  const countryName = COUNTRY_NAMES[userCountry] || userCountry;
+  const localizationSection = `
+🌍 PAÍS DEL USUARIO: ${countryName} (${userCountry})
+⚠️ CRÍTICO: USA LOS NOMBRES DE INGREDIENTES COMO SE CONOCEN EN ${countryName.toUpperCase()}.
+NO uses nombres de otros países. Ejemplos: ${userCountry === 'AR' || userCountry === 'CL' ? '"palta" no "aguacate", "choclo" no "elote", "frutilla" no "fresa"' : userCountry === 'ES' ? '"patata" no "papa", "melocotón" no "durazno", "nata" no "crema de leche"' : userCountry === 'MX' ? '"aguacate" no "palta", "elote" no "choclo", "fresa" no "frutilla"' : '"aguacate" no "palta", "piña" no "ananá"'}
+${INGREDIENT_LOCALIZATION_GUIDE}`;
+
   return `Genera una receta para ${getMealTypeLabel(mealType)} que cumpla con los siguientes requisitos:
 - Tipo de dieta: ${dietTypeDescription}
 - Calorías: aproximadamente ${calories} kcal
@@ -200,8 +259,8 @@ NO repitas recetas similares. Cada día debe tener una experiencia gastronómica
 - Preferencias de cocina: ${profile.cuisine_preferences?.join(', ') || 'variada'}
 - Porciones: ${profile.household_size} persona(s)
 - Tiempo máximo de preparación: ${profile.max_prep_time} minutos
-${profile.flexible_mode ? '- Modo flexible: Puedes ser creativo con ingredientes similares' : '- Modo estricto: Sigue exactamente las restricciones'}${preferencesSection}${varietySection}
-La receta debe ser práctica, con ingredientes accesibles y tiempo de preparación razonable.${userPreferences ? '\n\n¡IMPORTANTE! Ten en cuenta las preferencias especiales del usuario mencionadas arriba.' : ''}
+${profile.flexible_mode ? '- Modo flexible: Puedes ser creativo con ingredientes similares' : '- Modo estricto: Sigue exactamente las restricciones'}${preferencesSection}${varietySection}${localizationSection}
+La receta debe ser práctica, con ingredientes accesibles en ${countryName} y tiempo de preparación razonable.${userPreferences ? '\n\n¡IMPORTANTE! Ten en cuenta las preferencias especiales del usuario mencionadas arriba.' : ''}
 
 Responde ÚNICAMENTE con un JSON válido en este formato exacto:
 {
