@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
+import { NotificationDropdown } from './NotificationDropdown';
 
 const navItems = [
   { path: '/chat', label: 'Chat', icon: MessageSquare },
@@ -79,15 +80,18 @@ export function AppSidebar() {
                 <p className="text-xs text-muted-foreground">Companion</p>
               </div>
             </div>
-            {/* Close button - Only on mobile */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setIsOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <NotificationDropdown />
+              {/* Close button - Only on mobile */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden"
+                onClick={() => setIsOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
 
           {/* Navigation items */}

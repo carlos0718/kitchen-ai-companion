@@ -1,0 +1,85 @@
+name: 🐛 Reporte de bug
+description: Reportá un error o comportamiento inesperado en la app
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tomarte el tiempo de reportar este bug. Por favor completá todos los campos para que podamos reproducirlo y resolverlo rápido.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción del problema
+      description: Una descripción clara y concisa de qué está pasando.
+      placeholder: "Cuando hago X, pasa Y en vez de Z..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      description: Contanos paso a paso cómo reproducir el bug.
+      placeholder: |
+        1. Ir a '...'
+        2. Hacer click en '...'
+        3. Escribir '...'
+        4. Ver el error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento esperado
+      description: ¿Qué debería haber pasado?
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Capturas de pantalla
+      description: Si tenés screenshots o videos que muestren el problema, pegálos acá.
+
+  - type: dropdown
+    id: section
+    attributes:
+      label: Sección afectada
+      options:
+        - Chat con Chef AI
+        - Planificador Semanal
+        - Perfil de usuario
+        - Suscripción / Pagos
+        - Panel Admin
+        - Notificaciones
+        - Autenticación
+        - Otro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severidad
+      options:
+        - "Crítico — la app no funciona"
+        - "Alto — funcionalidad principal rota"
+        - "Medio — funcionalidad secundaria afectada"
+        - "Bajo — problema visual o menor"
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Navegador y sistema operativo
+      placeholder: "Ej: Chrome 122 en Windows 11"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Cualquier otra información relevante (plan de suscripción, país, etc.)

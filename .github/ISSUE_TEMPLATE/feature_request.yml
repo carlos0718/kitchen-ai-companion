@@ -1,0 +1,70 @@
+name: ✨ Solicitud de mejora
+description: Proponé una nueva funcionalidad o mejora para la app
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por tu sugerencia! Las ideas de la comunidad son clave para mejorar Kitchen AI Companion.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: ¿Qué problema resuelve esta mejora?
+      description: Describí el contexto o la necesidad que originó esta idea.
+      placeholder: "Actualmente cuando quiero hacer X, tengo que Y lo cual es ineficiente porque..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución propuesta
+      description: Describí cómo te imaginás que debería funcionar esta mejora.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: ¿Hay otras formas de resolver este problema? ¿Por qué preferís esta solución?
+
+  - type: dropdown
+    id: section
+    attributes:
+      label: Sección relacionada
+      options:
+        - Chat con Chef AI
+        - Planificador Semanal
+        - Perfil de usuario
+        - Suscripción / Pagos
+        - Panel Admin
+        - Notificaciones
+        - Onboarding
+        - Nueva sección
+        - Otro
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridad sugerida
+      options:
+        - "Alta — impacta muchos usuarios"
+        - "Media — mejora de experiencia"
+        - "Baja — nice to have"
+
+  - type: textarea
+    id: mockup
+    attributes:
+      label: Mockups o referencias
+      description: Si tenés wireframes, capturas de otras apps, o cualquier referencia visual, pegálas acá.
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Cualquier otra información que quieras agregar.

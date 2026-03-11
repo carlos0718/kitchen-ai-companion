@@ -53,39 +53,13 @@ interface Recipe {
 
 // Helper to get week start/end dates
 // If subscriptionStartDate is provided, use it as the base for 7-day periods
-function getWeekDates(date: Date, subscriptionStartDate?: Date): { start: Date; end: Date } {
-  if (subscriptionStartDate) {
-    // Calculate which 7-day period we're in relative to subscription start
-    const subStart = new Date(subscriptionStartDate);
-    subStart.setHours(0, 0, 0, 0);
-
-    const currentDate = new Date(date);
-    currentDate.setHours(0, 0, 0, 0);
-
-    // Calculate days since subscription start
-    const daysSinceStart = Math.floor((currentDate.getTime() - subStart.getTime()) / (1000 * 60 * 60 * 24));
-
-    // Calculate which 7-day period (0, 1, 2, etc.)
-    const periodNumber = Math.floor(daysSinceStart / 7);
-
-    // Calculate period start date
-    const start = new Date(subStart);
-    start.setDate(start.getDate() + (periodNumber * 7));
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-
-    return { start, end };
-  }
-
-  // Fallback to calendar week (Monday-Sunday) for non-subscribed users
+function getWeekDates(date: Date, _subscriptionStartDate?: Date): { start: Date; end: Date } {
+  // Always use Monday-Sunday calendar weeks (local timezone)
   const start = new Date(date);
-  const day = start.getDay();
-  const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Monday
-  start.setDate(diff);
   start.setHours(0, 0, 0, 0);
+  const day = start.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+  const diff = day === 0 ? -6 : 1 - day; // distance to Monday
+  start.setDate(start.getDate() + diff);
 
   const end = new Date(start);
   end.setDate(start.getDate() + 6); // Sunday

@@ -510,12 +510,20 @@ IMPORTANTE - COMPORTAMIENTO EN PRIMERA INTERACCIÓN:
 - Solo pregunta información que NO tengas en el perfil.
 
 FORMATO DE RESPUESTA:
-- Usa títulos con ## para secciones principales (ej: ## Ingredientes)
+- Usa títulos con ## para secciones principales (ej: ## 🥘 Ingredientes)
 - Usa ### para subsecciones (ej: ### Para la salsa)
 - NO uses asteriscos sueltos como viñetas, usa guiones (-)
 - Las negritas van con **texto** solo para palabras clave importantes
 - Listas numeradas para pasos de preparación
 - Mantén el formato limpio y legible
+
+USO DE EMOJIS (OBLIGATORIO):
+- Usá emojis relevantes en títulos de sección: 🥘 Ingredientes, 👨‍🍳 Preparación, 💡 Tips, 📊 Info nutricional, ⏱️ Tiempo, 🍽️ Porciones
+- Usá emojis al inicio de cada ítem de lista cuando sea apropiado: 🥦 verduras, 🍗 proteínas, 🌾 carbohidratos, etc.
+- En saludos y cierres usá emojis amigables: 😊 🎉 💪 ✨ 👏
+- Para advertencias o tips importantes: ⚠️ 💡 ✅ ❌
+- Para valores nutricionales: 🔥 calorías, 💪 proteínas, 🌾 carbohidratos, 🥑 grasas
+- Moderá el uso: 1-2 emojis por línea máximo, nunca en cada palabra
 
 RECOMENDACIONES PERSONALIZADAS:
 - Si el usuario tiene preferencias culinarias (peruana, mexicana, italiana, etc.), SIEMPRE sugiere versiones saludables de esas cocinas
@@ -578,7 +586,7 @@ Directrices generales:
 - SIEMPRE menciona valores nutricionales (calorías, proteínas, carbohidratos, grasas) por porción
 - Adapta las porciones y calorías al objetivo calórico diario del usuario
 
-Responde siempre en español de forma clara, concisa y motivadora.`;
+Responde siempre en español de forma clara, concisa, motivadora y usando emojis para hacer la conversación más amigable y visual.`;
 
 function buildSystemPrompt(userProfile: UserProfile | null): string {
   if (!userProfile) return BASE_SYSTEM_PROMPT;

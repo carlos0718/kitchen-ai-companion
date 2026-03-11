@@ -131,6 +131,8 @@ export type Database = {
           status: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          payment_gateway: string | null
+          subscribed: boolean
           updated_at: string
           user_id: string
         }
@@ -143,6 +145,8 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          payment_gateway?: string | null
+          subscribed?: boolean
           updated_at?: string
           user_id: string
         }
@@ -155,8 +159,61 @@ export type Database = {
           status?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          payment_gateway?: string | null
+          subscribed?: boolean
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_notifications: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          severity: string
+          read: boolean
+          action_url: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          title: string
+          message: string
+          severity?: string
+          read?: boolean
+          action_url?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          title?: string
+          message?: string
+          severity?: string
+          read?: boolean
+          action_url?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      admin_users: {
+        Row: {
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          created_at?: string
+        }
+        Update: {
+          user_id?: string
+          created_at?: string
         }
         Relationships: []
       }
@@ -165,6 +222,8 @@ export type Database = {
           id: string
           user_id: string
           name: string | null
+          last_name: string | null
+          country: string | null
           dietary_restrictions: string[]
           allergies: string[]
           cuisine_preferences: string[]
@@ -178,6 +237,7 @@ export type Database = {
           max_prep_time: number
           onboarding_completed: boolean
           onboarding_step: number
+          is_admin: boolean
           created_at: string
           updated_at: string
         }
@@ -185,6 +245,8 @@ export type Database = {
           id?: string
           user_id: string
           name?: string | null
+          last_name?: string | null
+          country?: string | null
           dietary_restrictions?: string[]
           allergies?: string[]
           cuisine_preferences?: string[]
@@ -198,6 +260,7 @@ export type Database = {
           max_prep_time?: number
           onboarding_completed?: boolean
           onboarding_step?: number
+          is_admin?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -205,6 +268,8 @@ export type Database = {
           id?: string
           user_id?: string
           name?: string | null
+          last_name?: string | null
+          country?: string | null
           dietary_restrictions?: string[]
           allergies?: string[]
           cuisine_preferences?: string[]
@@ -218,6 +283,7 @@ export type Database = {
           max_prep_time?: number
           onboarding_completed?: boolean
           onboarding_step?: number
+          is_admin?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -475,6 +541,8 @@ export type Database = {
           description: string
           status: string
           priority: string
+          admin_response: string | null
+          admin_id: string | null
           created_at: string
           updated_at: string
         }
@@ -485,6 +553,8 @@ export type Database = {
           description: string
           status?: string
           priority?: string
+          admin_response?: string | null
+          admin_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -495,6 +565,8 @@ export type Database = {
           description?: string
           status?: string
           priority?: string
+          admin_response?: string | null
+          admin_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -509,6 +581,8 @@ export type Database = {
           category: string
           votes: number
           status: string
+          admin_notes: string | null
+          admin_id: string | null
           created_at: string
           updated_at: string
         }
@@ -520,6 +594,8 @@ export type Database = {
           category?: string
           votes?: number
           status?: string
+          admin_notes?: string | null
+          admin_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -531,6 +607,8 @@ export type Database = {
           category?: string
           votes?: number
           status?: string
+          admin_notes?: string | null
+          admin_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -574,7 +652,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_admin_users: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_id: string
+          email: string
+          name: string | null
+          last_name: string | null
+          country: string | null
+          created_at: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
