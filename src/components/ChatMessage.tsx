@@ -5,10 +5,10 @@ import ReactMarkdown from 'react-markdown';
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
-  imageUrl?: string;
+  imageUrls?: string[];
 }
 
-export function ChatMessage({ role, content, imageUrl }: ChatMessageProps) {
+export function ChatMessage({ role, content, imageUrls }: ChatMessageProps) {
   const isAssistant = role === 'assistant';
 
   return (
@@ -30,12 +30,17 @@ export function ChatMessage({ role, content, imageUrl }: ChatMessageProps) {
         <p className="text-sm font-medium">
           {isAssistant ? 'Chef AI' : 'Tú'}
         </p>
-        {imageUrl && (
-          <img
-            src={imageUrl}
-            alt="Imagen adjunta"
-            className="max-h-48 w-auto rounded-lg border border-border object-contain"
-          />
+        {imageUrls && imageUrls.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {imageUrls.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt={`Imagen adjunta ${i + 1}`}
+                className="max-h-48 w-auto rounded-lg border border-border object-contain"
+              />
+            ))}
+          </div>
         )}
         {content && (
           <div className={cn(

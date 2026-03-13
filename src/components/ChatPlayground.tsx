@@ -126,7 +126,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
     return data.id;
   };
 
-  const handleSendMessage = async (input: string, imageData?: { base64: string; mimeType: string }) => {
+  const handleSendMessage = async (input: string, images?: { base64: string; mimeType: string; preview: string }[]) => {
     // Check usage limit for free users
     if (!subscribed && !canQuery) {
       toast({
@@ -160,7 +160,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
       await incrementUsage();
     }
 
-    sendMessage(input, imageData);
+    sendMessage(input, images);
   };
 
   return (
@@ -218,7 +218,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
                   key={message.id}
                   role={message.role}
                   content={message.content}
-                  imageUrl={message.imageUrl}
+                  imageUrls={message.imageUrls}
                 />
               ))
             )}
@@ -239,7 +239,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
 
         {/* Input */}
         <div className="chat-input-area">
-          <ChatInput onSend={(msg, img) => handleSendMessage(msg, img)} isLoading={isLoading} />
+          <ChatInput onSend={(msg, imgs) => handleSendMessage(msg, imgs)} isLoading={isLoading} />
         </div>
       </div>
 

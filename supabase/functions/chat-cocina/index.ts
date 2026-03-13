@@ -509,6 +509,12 @@ IMPORTANTE - COMPORTAMIENTO EN PRIMERA INTERACCIÓN:
 - Ofrece directamente ayuda con recetas adaptadas a su perfil.
 - Solo pregunta información que NO tengas en el perfil.
 
+CUANDO EL USUARIO ENVÍA UNA IMAGEN:
+- Describí brevemente lo que ves en la imagen (ej: "Veo una tostada de palta con huevo...")
+- Analizá los alimentos desde una perspectiva nutricional
+- Relacioná el contenido de la imagen con el objetivo del usuario si lo conocés
+- Si el usuario pide algo sobre la imagen, respondé en base a lo que realmente ves
+
 FORMATO DE RESPUESTA:
 - Usa títulos con ## para secciones principales (ej: ## 🥘 Ingredientes)
 - Usa ### para subsecciones (ej: ### Para la salsa)
@@ -799,9 +805,9 @@ serve(async (req: Request) => {
   try {
     const { messages, conversationHistory, user_id } = await req.json();
 
-    // Extract imageData from the last user message if present
+    // Extract images array from the last user message if present
     const lastMsgRaw = messages[messages.length - 1];
-    const imageData: { base64: string; mimeType: string } | undefined = lastMsgRaw?.imageData;
+    const images: { base64: string; mimeType: string }[] = lastMsgRaw?.images ?? [];
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
     if (!GEMINI_API_KEY) {
@@ -827,7 +833,7 @@ serve(async (req: Request) => {
 
     // If only an image was sent with no text, use a placeholder for sanitization
     const messageTextForSanitization = lastUserMessage.content.trim() ||
-      (imageData ? "¿Qué hay en esta imagen?" : "");
+      (images.length > 0 ? "¿Qué hay en esta imagen?" : "");
 
     if (!messageTextForSanitization) {
       throw new Error("Mensaje vacío o inválido");
@@ -960,14 +966,18 @@ serve(async (req: Request) => {
       const isLastUserMsg = i === sanitizedMessages.length - 1 && msg.role === "user";
       const parts: Record<string, unknown>[] = [];
 
-      // Attach image to last user message if present
-      if (isLastUserMsg && imageData?.base64 && imageData?.mimeType) {
-        parts.push({
-          inlineData: {
-            mimeType: imageData.mimeType,
-            data: imageData.base64,
-          },
-        });
+      // Attach images to last user message if present
+      if (isLastUserMsg && images.length > 0) {
+        for (const img of images) {
+          if (img.base64 && img.mimeType) {
+            parts.push({
+              inlineData: {
+                mimeType: img.mimeType,
+                data: img.base64,
+              },
+            });
+          }
+        }
       }
 
       if (msg.content) {

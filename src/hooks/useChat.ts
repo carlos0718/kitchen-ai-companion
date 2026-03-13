@@ -1,11 +1,13 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export type ImageData = { base64: string; mimeType: string };
+
 export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  imageUrl?: string;
+  imageUrls?: string[];
 }
 
 interface UseChatOptions {
@@ -22,7 +24,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
   const uploadImage = useCallback(async (base64: string, mimeType: string): Promise<string | null> => {
     if (!userId) return null;
     const ext = mimeType.split('/')[1] || 'jpg';
-    const path = `${userId}/${Date.now()}.${ext}`;
+    const path = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const byteString = atob(base64);
     const bytes = new Uint8Array(byteString.length);
     for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
@@ -37,14 +39,14 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
     return data.publicUrl;
   }, [userId]);
 
-  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string, imageUrl?: string) => {
+  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string, imageUrls?: string[]) => {
     if (!conversationId) return;
     try {
       await supabase.from('messages').insert({
         conversation_id: conversationId,
         role,
         content,
-        ...(imageUrl ? { image_url: imageUrl } : {}),
+        ...(imageUrls?.length ? { image_url: JSON.stringify(imageUrls) } : {}),
       });
       onMessageSaved?.();
     } catch (err) {
@@ -52,28 +54,28 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
     }
   }, [conversationId, onMessageSaved]);
 
-  const sendMessage = useCallback(async (input: string, imageData?: { base64: string; mimeType: string }) => {
-    if (!input.trim() && !imageData) return;
+  const sendMessage = useCallback(async (input: string, images?: ImageData[]) => {
+    if (!input.trim() && (!images || images.length === 0)) return;
 
-    // Upload image first if present
-    let imageUrl: string | undefined;
-    if (imageData) {
-      const url = await uploadImage(imageData.base64, imageData.mimeType);
-      if (url) imageUrl = url;
+    // Upload all images in parallel
+    const imageUrls: string[] = [];
+    if (images?.length) {
+      const results = await Promise.all(images.map(img => uploadImage(img.base64, img.mimeType)));
+      results.forEach(url => { if (url) imageUrls.push(url); });
     }
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       content: input,
-      imageUrl,
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
     };
 
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setError(null);
 
-    await saveMessage('user', input, imageUrl);
+    await saveMessage('user', input, imageUrls.length > 0 ? imageUrls : undefined);
 
     let assistantContent = '';
 
@@ -103,7 +105,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
           messages: [{
             role: 'user',
             content: input,
-            ...(imageData ? { imageData } : {}),
+            ...(images?.length ? { images: images.map(({ base64, mimeType }) => ({ base64, mimeType })) } : {}),
           }],
           conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
           user_id: userId,
@@ -174,12 +176,23 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
       return;
     }
 
-    setMessages(data.map(m => ({
-      id: m.id,
-      role: m.role as 'user' | 'assistant',
-      content: m.content,
-      imageUrl: m.image_url ?? undefined,
-    })));
+    setMessages(data.map(m => {
+      let imageUrls: string[] | undefined;
+      if (m.image_url) {
+        try {
+          const parsed = JSON.parse(m.image_url);
+          imageUrls = Array.isArray(parsed) ? parsed : [m.image_url];
+        } catch {
+          imageUrls = [m.image_url]; // backwards compat with old single-url format
+        }
+      }
+      return {
+        id: m.id,
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        imageUrls,
+      };
+    }));
   }, []);
 
   const clearMessages = useCallback(() => {
