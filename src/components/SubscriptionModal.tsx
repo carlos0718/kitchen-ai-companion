@@ -429,13 +429,13 @@ export function SubscriptionModal({
                 className="mb-6 p-4 bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-lg"
               >
                 <div className="flex items-center gap-3">
-                  <MapPin className="h-5 w-5 text-red-600" />
+                  <MapPin className="h-5 w-5 text-orange-500" />
                   <div>
                     <p className="font-semibold text-foreground">
-                      Pagos no disponibles en tu ubicación
+                      Próximamente en tu país 🌎
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Actualmente solo aceptamos pagos desde Argentina. Estamos trabajando para expandirnos a más países pronto.
+                      Por ahora los pagos están disponibles solo en Argentina. ¡Estamos creciendo y pronto llegaremos a más países!
                     </p>
                   </div>
                 </div>
@@ -741,10 +741,10 @@ export function SubscriptionModal({
                     className="mt-6 p-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 rounded-lg border border-red-500/20"
                   >
                     <h3 className="text-lg font-semibold mb-2">
-                      Pagos no disponibles
+                      Próximamente en tu país 🌎
                     </h3>
                     <p className="text-muted-foreground">
-                      Actualmente solo aceptamos pagos desde Argentina. Estamos trabajando para expandirnos a más países pronto.
+                      Por ahora los pagos están disponibles solo en Argentina. ¡Estamos creciendo y pronto llegaremos a más países!
                     </p>
                   </motion.div>
                 )}

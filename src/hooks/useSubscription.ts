@@ -161,7 +161,7 @@ export function useSubscription() {
       // Check if payment is available in this country
       const isAvailable = detectionResponse.data?.available !== false;
       if (!isAvailable) {
-        throw new Error('Los pagos solo están disponibles en Argentina por el momento. Estamos trabajando para expandirnos a más países.');
+        throw new Error('Por ahora los pagos están disponibles solo en Argentina. ¡Pronto llegaremos a más países!');
       }
 
       const gateway = detectionResponse.data?.gateway;
