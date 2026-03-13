@@ -237,7 +237,6 @@ export type Database = {
           max_prep_time: number
           onboarding_completed: boolean
           onboarding_step: number
-          is_admin: boolean
           created_at: string
           updated_at: string
         }
@@ -260,7 +259,6 @@ export type Database = {
           max_prep_time?: number
           onboarding_completed?: boolean
           onboarding_step?: number
-          is_admin?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -283,7 +281,6 @@ export type Database = {
           max_prep_time?: number
           onboarding_completed?: boolean
           onboarding_step?: number
-          is_admin?: boolean
           created_at?: string
           updated_at?: string
         }

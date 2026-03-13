@@ -798,6 +798,10 @@ serve(async (req: Request) => {
 
   try {
     const { messages, conversationHistory, user_id } = await req.json();
+
+    // Extract imageData from the last user message if present
+    const lastMsgRaw = messages[messages.length - 1];
+    const imageData: { base64: string; mimeType: string } | undefined = lastMsgRaw?.imageData;
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
     if (!GEMINI_API_KEY) {
@@ -821,8 +825,16 @@ serve(async (req: Request) => {
       throw new Error("Mensaje vacío o inválido");
     }
 
+    // If only an image was sent with no text, use a placeholder for sanitization
+    const messageTextForSanitization = lastUserMessage.content.trim() ||
+      (imageData ? "¿Qué hay en esta imagen?" : "");
+
+    if (!messageTextForSanitization) {
+      throw new Error("Mensaje vacío o inválido");
+    }
+
     // Sanitizar el mensaje del usuario
-    const sanitizationResult = sanitizeUserInput(lastUserMessage.content);
+    const sanitizationResult = sanitizeUserInput(messageTextForSanitization);
 
     // Log de seguridad (sin exponer datos sensibles)
     if (sanitizationResult.hasPotentialInjection) {
@@ -943,10 +955,28 @@ serve(async (req: Request) => {
     }
 
     // Add current messages (using sanitized version)
-    for (const msg of sanitizedMessages) {
+    for (let i = 0; i < sanitizedMessages.length; i++) {
+      const msg = sanitizedMessages[i];
+      const isLastUserMsg = i === sanitizedMessages.length - 1 && msg.role === "user";
+      const parts: Record<string, unknown>[] = [];
+
+      // Attach image to last user message if present
+      if (isLastUserMsg && imageData?.base64 && imageData?.mimeType) {
+        parts.push({
+          inlineData: {
+            mimeType: imageData.mimeType,
+            data: imageData.base64,
+          },
+        });
+      }
+
+      if (msg.content) {
+        parts.push({ text: msg.content });
+      }
+
       contents.push({
         role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
+        parts,
       });
     }
 

@@ -5,6 +5,7 @@ export interface Message {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  imageUrl?: string;
 }
 
 interface UseChatOptions {
@@ -18,14 +19,32 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string) => {
-    if (!conversationId) return;
+  const uploadImage = useCallback(async (base64: string, mimeType: string): Promise<string | null> => {
+    if (!userId) return null;
+    const ext = mimeType.split('/')[1] || 'jpg';
+    const path = `${userId}/${Date.now()}.${ext}`;
+    const byteString = atob(base64);
+    const bytes = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) bytes[i] = byteString.charCodeAt(i);
+    const blob = new Blob([bytes], { type: mimeType });
 
+    const { error } = await supabase.storage.from('chat-images').upload(path, blob, { contentType: mimeType });
+    if (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+    const { data } = supabase.storage.from('chat-images').getPublicUrl(path);
+    return data.publicUrl;
+  }, [userId]);
+
+  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string, imageUrl?: string) => {
+    if (!conversationId) return;
     try {
       await supabase.from('messages').insert({
         conversation_id: conversationId,
         role,
         content,
+        ...(imageUrl ? { image_url: imageUrl } : {}),
       });
       onMessageSaved?.();
     } catch (err) {
@@ -33,30 +52,37 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
     }
   }, [conversationId, onMessageSaved]);
 
-  const sendMessage = useCallback(async (input: string) => {
-    if (!input.trim()) return;
-    
-    const userMessage: Message = { 
-      id: crypto.randomUUID(), 
-      role: 'user', 
-      content: input 
+  const sendMessage = useCallback(async (input: string, imageData?: { base64: string; mimeType: string }) => {
+    if (!input.trim() && !imageData) return;
+
+    // Upload image first if present
+    let imageUrl: string | undefined;
+    if (imageData) {
+      const url = await uploadImage(imageData.base64, imageData.mimeType);
+      if (url) imageUrl = url;
+    }
+
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: input,
+      imageUrl,
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
     setError(null);
 
-    // Save user message
-    await saveMessage('user', input);
+    await saveMessage('user', input, imageUrl);
 
     let assistantContent = '';
-    
+
     const upsertAssistant = (chunk: string) => {
       assistantContent += chunk;
       setMessages(prev => {
         const last = prev[prev.length - 1];
         if (last?.role === 'assistant') {
-          return prev.map((m, i) => 
+          return prev.map((m, i) =>
             i === prev.length - 1 ? { ...m, content: assistantContent } : m
           );
         }
@@ -66,7 +92,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
 
     try {
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-cocina`;
-      
+
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
@@ -74,7 +100,11 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          messages: [{ role: 'user', content: input }],
+          messages: [{
+            role: 'user',
+            content: input,
+            ...(imageData ? { imageData } : {}),
+          }],
           conversationHistory: messages.map(m => ({ role: m.role, content: m.content })),
           user_id: userId,
         }),
@@ -94,7 +124,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        
+
         textBuffer += decoder.decode(value, { stream: true });
 
         let newlineIndex: number;
@@ -120,7 +150,6 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
         }
       }
 
-      // Save assistant message
       if (assistantContent) {
         await saveMessage('assistant', assistantContent);
       }
@@ -131,7 +160,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
     } finally {
       setIsLoading(false);
     }
-  }, [messages, userId, saveMessage]);
+  }, [messages, userId, saveMessage, uploadImage]);
 
   const loadMessages = useCallback(async (convId: string) => {
     const { data, error } = await supabase
@@ -149,6 +178,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
       id: m.id,
       role: m.role as 'user' | 'assistant',
       content: m.content,
+      imageUrl: m.image_url ?? undefined,
     })));
   }, []);
 

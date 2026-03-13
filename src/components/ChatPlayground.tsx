@@ -126,7 +126,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
     return data.id;
   };
 
-  const handleSendMessage = async (input: string) => {
+  const handleSendMessage = async (input: string, imageData?: { base64: string; mimeType: string }) => {
     // Check usage limit for free users
     if (!subscribed && !canQuery) {
       toast({
@@ -148,7 +148,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
 
     // Update conversation title with first message
     if (messages.length === 0) {
-      const title = input.slice(0, 50) + (input.length > 50 ? '...' : '');
+      const title = (input || 'Imagen').slice(0, 50) + ((input || 'Imagen').length > 50 ? '...' : '');
       await supabase
         .from('conversations')
         .update({ title })
@@ -160,7 +160,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
       await incrementUsage();
     }
 
-    sendMessage(input);
+    sendMessage(input, imageData);
   };
 
   return (
@@ -218,6 +218,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
                   key={message.id}
                   role={message.role}
                   content={message.content}
+                  imageUrl={message.imageUrl}
                 />
               ))
             )}
@@ -238,7 +239,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
 
         {/* Input */}
         <div className="chat-input-area">
-          <ChatInput onSend={handleSendMessage} isLoading={isLoading} />
+          <ChatInput onSend={(msg, img) => handleSendMessage(msg, img)} isLoading={isLoading} />
         </div>
       </div>
 
