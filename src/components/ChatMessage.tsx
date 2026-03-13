@@ -15,7 +15,7 @@ export function ChatMessage({ role, content, imageUrl }: ChatMessageProps) {
     <div
       className={cn(
         'flex gap-3 p-4 rounded-lg',
-        isAssistant ? 'bg-accent/50' : 'bg-card'
+        isAssistant ? 'bg-transparent border border-border/40' : 'bg-card'
       )}
     >
       <div
@@ -38,17 +38,42 @@ export function ChatMessage({ role, content, imageUrl }: ChatMessageProps) {
           />
         )}
         {content && (
-          <div className="prose prose-sm max-w-none text-foreground prose-headings:text-foreground prose-strong:text-foreground prose-strong:font-semibold">
+          <div className={cn(
+            'max-w-none text-foreground',
+            isAssistant ? 'font-serif' : ''
+          )}>
             <ReactMarkdown
               components={{
-                h1: ({ children }) => <h2 className="text-lg font-bold mt-4 mb-2 text-foreground">{children}</h2>,
-                h2: ({ children }) => <h3 className="text-base font-bold mt-3 mb-2 text-foreground">{children}</h3>,
-                h3: ({ children }) => <h4 className="text-sm font-bold mt-2 mb-1 text-foreground uppercase">{children}</h4>,
-                strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
-                ul: ({ children }) => <ul className="list-disc list-inside space-y-1 my-2">{children}</ul>,
-                ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 my-2">{children}</ol>,
-                li: ({ children }) => <li className="text-sm">{children}</li>,
-                p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                h1: ({ children }) => (
+                  <h2 className="text-xl font-bold mt-5 mb-1 text-foreground tracking-tight">
+                    {children}
+                  </h2>
+                ),
+                h2: ({ children }) => (
+                  <h3 className="text-lg font-bold mt-4 mb-1 text-foreground tracking-tight">
+                    {children}
+                  </h3>
+                ),
+                h3: ({ children }) => (
+                  <h4 className="text-base font-bold mt-3 mb-1 text-foreground uppercase tracking-wide">
+                    {children}
+                  </h4>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-bold text-foreground">{children}</strong>
+                ),
+                ul: ({ children }) => (
+                  <ul className="ml-4 space-y-1.5 my-2">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="ml-4 space-y-1.5 my-2 list-decimal list-outside">{children}</ol>
+                ),
+                li: ({ children }) => (
+                  <li className="text-base leading-relaxed">{children}</li>
+                ),
+                p: ({ children }) => (
+                  <p className="text-base leading-relaxed ml-4 mb-2 last:mb-0">{children}</p>
+                ),
               }}
             >
               {content}

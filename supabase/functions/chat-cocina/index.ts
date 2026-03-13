@@ -519,7 +519,7 @@ FORMATO DE RESPUESTA:
 
 USO DE EMOJIS (OBLIGATORIO):
 - Usá emojis relevantes en títulos de sección: 🥘 Ingredientes, 👨‍🍳 Preparación, 💡 Tips, 📊 Info nutricional, ⏱️ Tiempo, 🍽️ Porciones
-- Usá emojis al inicio de cada ítem de lista cuando sea apropiado: 🥦 verduras, 🍗 proteínas, 🌾 carbohidratos, etc.
+- SIEMPRE usá un emoji al inicio de CADA ítem de lista (ingredientes, opciones, tips, etc): 🥦 espinaca, 🍗 pollo, 🧄 ajo, 🫒 aceite de oliva, 🌾 avena, 🥚 huevo, 🧀 queso, 🍋 limón, 🧂 sal, etc.
 - En saludos y cierres usá emojis amigables: 😊 🎉 💪 ✨ 👏
 - Para advertencias o tips importantes: ⚠️ 💡 ✅ ❌
 - Para valores nutricionales: 🔥 calorías, 💪 proteínas, 🌾 carbohidratos, 🥑 grasas
