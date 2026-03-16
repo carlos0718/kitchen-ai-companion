@@ -64,6 +64,7 @@ export function useProfile(userId?: string) {
       toast({
         title: 'Perfil creado',
         description: 'Tu perfil se creó exitosamente',
+        variant: 'success',
       });
       return newProfile;
     } catch (error) {
@@ -100,6 +101,7 @@ export function useProfile(userId?: string) {
       toast({
         title: 'Perfil actualizado',
         description: 'Los cambios se guardaron exitosamente',
+        variant: 'success',
       });
       return updatedProfile;
     } catch (error) {

@@ -93,7 +93,6 @@ export function ChatInput({onSend, isLoading, placeholder}: ChatInputProps) {
 		const hasText = input.trim();
 		const hasImages = images.length > 0;
 		if ((!hasText && !hasImages) || isLoading) return;
-
 		onSend(input.trim(), hasImages ? images : undefined);
 		setInput('');
 		setImages([]);
@@ -106,23 +105,27 @@ export function ChatInput({onSend, isLoading, placeholder}: ChatInputProps) {
 		}
 	};
 
-	const canSend = (input.trim() || images.length > 0) && !isLoading;
+	const canSend = (input.trim().length > 0 || images.length > 0) && !isLoading;
 
 	return (
-		<div className='p-4 border-t border-border bg-card'>
-			<div className='relative max-w-3xl mx-auto'>
+		<div className='bg-background/80 backdrop-blur-sm border-t border-border/50'>
+			<div className='max-w-5xl mx-auto px-4 py-3'>
 				{/* Image previews */}
 				{images.length > 0 && (
-					<div className='mb-2 flex flex-wrap gap-2'>
+					<div className='mb-3 flex flex-wrap gap-2 px-1'>
 						{images.map((img, idx) => (
-							<div key={idx} className='relative inline-block'>
-								<img src={img.preview} alt={`Imagen ${idx + 1}`} className='h-20 w-auto rounded-lg border border-border object-cover' />
+							<div key={idx} className='relative inline-block group'>
+								<img
+									src={img.preview}
+									alt={`Imagen ${idx + 1}`}
+									className='h-20 w-auto rounded-xl border-2 border-border object-cover shadow-sm transition-transform group-hover:scale-[1.02]'
+								/>
 								<button
 									type='button'
 									title='Eliminar imagen'
 									aria-label='Eliminar imagen'
 									onClick={() => removeImage(idx)}
-									className='absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-0.5 hover:bg-destructive/90'
+									className='absolute -top-1.5 -right-1.5 bg-destructive text-destructive-foreground rounded-full p-0.5 shadow opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/80'
 								>
 									<X className='h-3 w-3' />
 								</button>
@@ -134,7 +137,7 @@ export function ChatInput({onSend, isLoading, placeholder}: ChatInputProps) {
 								title='Agregar otra imagen'
 								aria-label='Agregar otra imagen'
 								onClick={() => fileInputRef.current?.click()}
-								className='h-20 w-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors'
+								className='h-20 w-20 rounded-xl border-2 border-dashed border-border/70 flex items-center justify-center text-muted-foreground hover:border-primary/60 hover:text-primary hover:bg-accent/40 transition-all'
 							>
 								<ImagePlus className='h-5 w-5' />
 							</button>
@@ -142,32 +145,31 @@ export function ChatInput({onSend, isLoading, placeholder}: ChatInputProps) {
 					</div>
 				)}
 
-				<div className='relative'>
+				{/* Input container */}
+				<div className='relative flex items-end gap-2 bg-card rounded-2xl border-2 border-border/70 shadow-sm focus-within:border-primary/50 focus-within:shadow-md transition-all duration-200 px-3 py-2'>
+					{/* Image picker */}
+					{images.length === 0 && (
+						<button
+							type='button'
+							onClick={() => fileInputRef.current?.click()}
+							disabled={isLoading}
+							title='Adjuntar imagen'
+							aria-label='Adjuntar imagen'
+							className='shrink-0 mb-1 p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent/50 transition-colors disabled:opacity-40'
+						>
+							<ImagePlus className='h-4.5 w-4.5' />
+						</button>
+					)}
+
 					<Textarea
 						value={input}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={handleKeyDown}
 						onPaste={handlePaste}
-						placeholder={placeholder || 'Escribe tus ingredientes o pregunta una receta...'}
-						className='min-h-[52px] max-h-[200px] resize-none bg-background pr-24 py-3 rounded-2xl border-2 focus:border-primary/50 transition-colors'
+						placeholder={placeholder || 'Escribe tus ingredientes o una pregunta de cocina...'}
+						className='flex-1 min-h-[40px] max-h-[160px] resize-none bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 py-1.5 px-1 text-base placeholder:text-muted-foreground/60'
 						disabled={isLoading}
 					/>
-
-					{/* Image picker button */}
-					{images.length === 0 && (
-						<Button
-							type='button'
-							onClick={() => fileInputRef.current?.click()}
-							disabled={isLoading}
-							size='icon'
-							variant='ghost'
-							title='Adjuntar imagen'
-							aria-label='Adjuntar imagen'
-							className='absolute right-12 bottom-2 h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground'
-						>
-							<ImagePlus className='h-4 w-4' />
-						</Button>
-					)}
 
 					{/* Send button */}
 					<Button
@@ -177,8 +179,10 @@ export function ChatInput({onSend, isLoading, placeholder}: ChatInputProps) {
 						size='icon'
 						title='Enviar mensaje'
 						aria-label='Enviar mensaje'
-						className={`absolute right-2 bottom-2 h-9 w-9 rounded-xl transition-all ${
-							canSend ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-muted text-muted-foreground'
+						className={`shrink-0 mb-1 h-9 w-9 rounded-xl transition-all duration-200 ${
+							canSend
+								? 'bg-primary hover:bg-primary/85 text-primary-foreground shadow-sm shadow-primary/25 scale-100'
+								: 'bg-muted text-muted-foreground scale-95 opacity-60'
 						}`}
 					>
 						{isLoading ? <Loader2 className='h-4 w-4 animate-spin' /> : <ArrowUp className='h-4 w-4' />}

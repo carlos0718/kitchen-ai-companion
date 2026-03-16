@@ -81,6 +81,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
       toast({
         title: '¡Suscripción exitosa!',
         description: 'Ahora tienes acceso a consultas ilimitadas',
+        variant: 'success',
       });
       checkSubscription();
       window.history.replaceState({}, '', '/');
@@ -167,7 +168,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
     <div className="chat-playground-container">
       <div className="chat-content-area">
         {/* Header */}
-        <header className="chat-header flex items-center justify-between p-4 border-b border-border bg-card">
+        <header className="chat-header flex items-center justify-between p-4 border-b border-border/50 bg-card/90 backdrop-blur-sm">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
               <ChefHat className="h-5 w-5 text-primary-foreground" />
@@ -187,11 +188,11 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
 
         {/* Messages */}
         <div className="chat-messages-area" ref={scrollRef}>
-          <div className="max-w-4xl mx-auto p-4 space-y-4 pb-4">
+          <div className="max-w-5xl mx-auto p-4 space-y-4 pb-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mb-6">
-                  <Sparkles className="h-10 w-10 text-accent-foreground" />
+                <div className="w-20 h-20 bg-primary/10 ring-1 ring-primary/20 rounded-full flex items-center justify-center mb-6">
+                  <Sparkles className="h-10 w-10 text-primary" />
                 </div>
                 <h2 className="text-2xl font-serif font-semibold mb-2">
                   ¡Bienvenido a Chef AI!
@@ -223,7 +224,7 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
               ))
             )}
             {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
-              <div className="flex gap-3 p-4 rounded-lg bg-accent/50">
+              <div className="flex gap-3 p-4 rounded-lg bg-card border border-border/40">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <ChefHat className="h-4 w-4" />
                 </div>

@@ -333,6 +333,7 @@ export function useShoppingList(mealPlanId?: string) {
       toast({
         title: 'Lista generada',
         description: `Se agregaron ${insertedItems?.length || 0} ingredientes`,
+        variant: 'success',
       });
     } catch (error) {
       console.error('Error generating shopping list:', error);
