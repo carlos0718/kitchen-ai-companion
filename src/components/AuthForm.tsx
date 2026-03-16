@@ -29,6 +29,7 @@ export function AuthForm() {
         toast({
           title: 'Email enviado',
           description: 'Revisa tu correo para restablecer tu contraseña.',
+          variant: 'info',
         });
         setIsForgotPassword(false);
         setIsLogin(true);
@@ -48,9 +49,9 @@ export function AuthForm() {
         });
         if (error) throw error;
         toast({
-          title: '✅ ¡Cuenta creada!',
+          title: '¡Cuenta creada!',
           description: 'Te enviamos un email de verificación. Por favor, revisa tu correo y confirma tu cuenta para poder iniciar sesión.',
-          className: 'bg-green-50 border-green-200',
+          variant: 'success',
         });
         setEmail('');
         setPassword('');

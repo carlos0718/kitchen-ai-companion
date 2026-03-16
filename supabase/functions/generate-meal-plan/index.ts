@@ -207,7 +207,8 @@ function buildMealPrompt(
   carbs: number,
   fat: number,
   userPreferences?: string,
-  previousMeals?: string[] // Names of previously generated meals for this meal type
+  previousMeals?: string[], // Names of previously generated meals for this meal type across days
+  todayMeals?: string[]     // Names of other meals already generated today (for intra-day variety)
 ): string {
   const restrictionsText = profile.dietary_restrictions?.length
     ? profile.dietary_restrictions.join(', ')
@@ -226,18 +227,20 @@ function buildMealPrompt(
     ? `\n⭐ PREFERENCIAS ESPECIALES DEL USUARIO: ${userPreferences}\n`
     : '';
 
-  // Build variety instruction if there are previous meals
-  const varietySection = previousMeals && previousMeals.length > 0
-    ? `\n🔄 VARIEDAD IMPORTANTE: Ya se han generado las siguientes comidas para este tipo de comida en otros días de la semana:
-${previousMeals.map((meal, i) => `- Día ${i + 1}: ${meal}`).join('\n')}
+  // Build variety instruction combining cross-day and intra-day meals
+  const allPreviousMeals = [
+    ...(previousMeals && previousMeals.length > 0
+      ? [`Comidas anteriores para este mismo tipo (otros días): ${previousMeals.join(' / ')}`]
+      : []),
+    ...(todayMeals && todayMeals.length > 0
+      ? [`Otras comidas ya generadas HOY: ${todayMeals.join(' / ')}`]
+      : []),
+  ];
+  const varietySection = allPreviousMeals.length > 0
+    ? `\n🔄 VARIEDAD OBLIGATORIA:
+${allPreviousMeals.join('\n')}
 
-⚠️ DEBES generar una receta COMPLETAMENTE DIFERENTE a las anteriores. Varía:
-- El tipo de plato principal (si antes fue huevos, ahora puede ser avena o tostadas)
-- Los ingredientes principales
-- El estilo de cocina
-- La preparación
-
-NO repitas recetas similares. Cada día debe tener una experiencia gastronómica distinta.\n`
+⚠️ La receta que generes DEBE ser completamente diferente a todas las anteriores. Varía el ingrediente proteico principal, los carbohidratos base y el estilo de preparación. Si hoy ya hay huevos en otra comida, usa otra proteína. Si ya hay arroz, usa otro cereal o vegetal.\n`
     : '';
 
   const userCountry = profile.country || "AR";
@@ -249,6 +252,13 @@ NO uses nombres de otros países. Ejemplos: ${userCountry === 'AR' || userCountr
 ${INGREDIENT_LOCALIZATION_GUIDE}`;
 
   return `Genera una receta para ${getMealTypeLabel(mealType)} que cumpla con los siguientes requisitos:
+
+⚠️ REGLAS PARA EL NOMBRE DE LA RECETA:
+- Debe ser CORTO (máximo 4-5 palabras), simple y descriptivo
+- NO incluyas el origen cultural o geográfico del plato (no "Nikkei", "Italiano", "Mexicano", "Peruano", etc.)
+- Describe el plato en sí: "Tostadas con Palta y Huevo", "Avena con Frutas", "Pollo al Limón", "Ensalada de Atún"
+- En español, accesible y cotidiano
+
 - Tipo de dieta: ${dietTypeDescription}
 - Calorías: aproximadamente ${calories} kcal
 - Proteína: ${protein}g
@@ -682,16 +692,19 @@ serve(async (req) => {
       currentDate.setDate(currentDate.getDate() + day);
       const dateStr = currentDate.toISOString().split('T')[0];
 
+      // Track meals generated within this day for intra-day variety
+      const todayGeneratedMeals: string[] = [];
+
       for (const mealType of mealTypes) {
         const mealCalories = (mealDistribution as unknown as Record<string, number>)[mealType];
         const mealProtein = Math.round((mealCalories * macroDistribution.protein / 100) / 4);
         const mealCarbs = Math.round((mealCalories * macroDistribution.carbs / 100) / 4);
         const mealFat = Math.round((mealCalories * macroDistribution.fat / 100) / 9);
 
-        // Pass previously generated meals for this meal type to ensure variety
+        // Pass previously generated meals for this meal type (cross-day) and today's meals (intra-day)
         const previousMeals = generatedMealsByType[mealType] || [];
-        console.log(`Generating ${mealType} for day ${day}. Previous meals for this type:`, previousMeals);
-        const prompt = buildMealPrompt(userProfile, mealType, mealCalories, mealProtein, mealCarbs, mealFat, undefined, previousMeals);
+        console.log(`Generating ${mealType} for day ${day}. Previous same-type meals:`, previousMeals, 'Today meals so far:', todayGeneratedMeals);
+        const prompt = buildMealPrompt(userProfile, mealType, mealCalories, mealProtein, mealCarbs, mealFat, undefined, previousMeals, todayGeneratedMeals);
 
         const aiResponse = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`,
@@ -720,9 +733,10 @@ serve(async (req) => {
 
         const recipeData = JSON.parse(jsonMatch[0]);
 
-        // Add meal name to tracker for variety in subsequent days
+        // Add meal name to trackers: cross-day (same meal type) and intra-day (all meals today)
         if (recipeData.name) {
           generatedMealsByType[mealType].push(recipeData.name);
+          todayGeneratedMeals.push(recipeData.name);
         }
 
         // Create recipe

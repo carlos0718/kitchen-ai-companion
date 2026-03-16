@@ -65,6 +65,7 @@ export default function ResetPassword() {
       toast({
         title: 'Contraseña actualizada',
         description: 'Tu contraseña ha sido restablecida exitosamente.',
+        variant: 'success',
       });
 
       // Wait a bit before redirecting

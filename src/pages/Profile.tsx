@@ -10,7 +10,50 @@ import {Button} from '@/components/ui/button';
 import {Checkbox} from '@/components/ui/checkbox';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {Separator} from '@/components/ui/separator';
-import {User as UserIcon, Loader2, Crown, Sparkles} from 'lucide-react';
+import {User as UserIcon, Loader2, Crown, Sparkles, CalendarIcon} from 'lucide-react';
+import {Popover, PopoverContent, PopoverTrigger} from '@/components/ui/popover';
+import {Calendar} from '@/components/ui/calendar';
+import {format, parse, isValid, setMonth, setYear} from 'date-fns';
+import {es} from 'date-fns/locale';
+import {useNavigation, type CaptionProps} from 'react-day-picker';
+
+const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const FROM_YEAR = 1920;
+const TO_YEAR = new Date().getFullYear() - 5;
+
+function CalendarCaption({displayMonth}: CaptionProps) {
+	const {goToMonth} = useNavigation();
+	return (
+		<div className='flex items-center justify-center gap-2 px-1 py-1'>
+			<Select
+				value={String(displayMonth.getMonth())}
+				onValueChange={(v) => goToMonth(setMonth(displayMonth, Number(v)))}
+			>
+				<SelectTrigger className='h-8 w-[130px] text-sm border-border/60 focus:ring-primary/30'>
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent>
+					{MONTHS_ES.map((m, i) => (
+						<SelectItem key={i} value={String(i)}>{m}</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+			<Select
+				value={String(displayMonth.getFullYear())}
+				onValueChange={(v) => goToMonth(setYear(displayMonth, Number(v)))}
+			>
+				<SelectTrigger className='h-8 w-[90px] text-sm border-border/60 focus:ring-primary/30'>
+					<SelectValue />
+				</SelectTrigger>
+				<SelectContent className='max-h-52'>
+					{Array.from({length: TO_YEAR - FROM_YEAR + 1}, (_, i) => TO_YEAR - i).map((y) => (
+						<SelectItem key={y} value={String(y)}>{y}</SelectItem>
+					))}
+				</SelectContent>
+			</Select>
+		</div>
+	);
+}
 import {BillingHistory} from '@/components/BillingHistory';
 import {PaymentMethodCard} from '@/components/PaymentMethodCard';
 import {NextBillingCard} from '@/components/NextBillingCard';
@@ -179,13 +222,38 @@ export function Profile() {
 								</div>
 								<div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
 									<div className='space-y-2'>
-										<Label htmlFor='birth_date'>Fecha de Nacimiento</Label>
-										<Input
-											id='birth_date'
-											type='date'
-											value={formData.birth_date || ''}
-											onChange={(e) => setFormData({...formData, birth_date: e.target.value})}
-										/>
+										<Label>Fecha de Nacimiento</Label>
+										<Popover>
+											<PopoverTrigger asChild>
+												<Button
+													type='button'
+													variant='outline'
+													className='w-full justify-start text-left font-normal'
+												>
+													<CalendarIcon className='mr-2 h-4 w-4 text-muted-foreground' />
+													{formData.birth_date && isValid(parse(formData.birth_date, 'yyyy-MM-dd', new Date()))
+														? format(parse(formData.birth_date, 'yyyy-MM-dd', new Date()), "d 'de' MMMM 'de' yyyy", {locale: es})
+														: <span className='text-muted-foreground'>Selecciona tu fecha</span>
+													}
+												</Button>
+											</PopoverTrigger>
+											<PopoverContent className='w-auto p-0' align='start'>
+												<Calendar
+													mode='single'
+													selected={formData.birth_date && isValid(parse(formData.birth_date, 'yyyy-MM-dd', new Date()))
+														? parse(formData.birth_date, 'yyyy-MM-dd', new Date())
+														: undefined
+													}
+													onSelect={(date) => setFormData({...formData, birth_date: date ? format(date, 'yyyy-MM-dd') : null})}
+													defaultMonth={formData.birth_date
+														? parse(formData.birth_date, 'yyyy-MM-dd', new Date())
+														: new Date(1990, 0, 1)
+													}
+													locale={es}
+													components={{Caption: CalendarCaption}}
+												/>
+											</PopoverContent>
+										</Popover>
 									</div>
 									<div className='space-y-2'>
 										<Label htmlFor='country'>País</Label>
