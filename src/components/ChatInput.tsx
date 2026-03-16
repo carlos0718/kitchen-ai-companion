@@ -12,29 +12,56 @@ interface ChatInputProps {
 }
 
 const MAX_IMAGES = 4;
+const MAX_DIMENSION = 1024;
+const JPEG_QUALITY = 0.75;
+
+function compressImage(file: File): Promise<ImageItem> {
+	return new Promise((resolve, reject) => {
+		const objectUrl = URL.createObjectURL(file);
+		const img = new Image();
+		img.onerror = reject;
+		img.onload = () => {
+			let {width, height} = img;
+			if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+				if (width >= height) {
+					height = Math.round((height * MAX_DIMENSION) / width);
+					width = MAX_DIMENSION;
+				} else {
+					width = Math.round((width * MAX_DIMENSION) / height);
+					height = MAX_DIMENSION;
+				}
+			}
+			const canvas = document.createElement('canvas');
+			canvas.width = width;
+			canvas.height = height;
+			const ctx = canvas.getContext('2d')!;
+			ctx.drawImage(img, 0, 0, width, height);
+			URL.revokeObjectURL(objectUrl);
+			const dataUrl = canvas.toDataURL('image/jpeg', JPEG_QUALITY);
+			resolve({base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', preview: dataUrl});
+		};
+		img.src = objectUrl;
+	});
+}
 
 export function ChatInput({onSend, isLoading, placeholder}: ChatInputProps) {
 	const [input, setInput] = useState('');
 	const [images, setImages] = useState<ImageItem[]>([]);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
-	const processFile = useCallback((file: File) => {
+	const processFile = useCallback(async (file: File) => {
 		if (!file.type.startsWith('image/')) return;
-		setImages(prev => {
-			if (prev.length >= MAX_IMAGES) return prev;
-			const reader = new FileReader();
-			reader.onload = (e) => {
-				const dataUrl = e.target?.result as string;
-				const base64 = dataUrl.split(',')[1];
-				setImages(current => {
-					if (current.length >= MAX_IMAGES) return current;
-					return [...current, {base64, mimeType: file.type, preview: dataUrl}];
-				});
-			};
-			reader.readAsDataURL(file);
-			return prev;
-		});
-	}, []);
+		if (images.length >= MAX_IMAGES) return;
+		try {
+			const item = await compressImage(file);
+			setImages(current => {
+				if (current.length >= MAX_IMAGES) return current;
+				return [...current, item];
+			});
+		} catch (e) {
+			console.error('Error compressing image:', e);
+		}
+	}, [images.length]);
 
 	const handlePaste = useCallback(
 		(e: React.ClipboardEvent) => {
@@ -91,6 +118,7 @@ export function ChatInput({onSend, isLoading, placeholder}: ChatInputProps) {
 							<div key={idx} className='relative inline-block'>
 								<img src={img.preview} alt={`Imagen ${idx + 1}`} className='h-20 w-auto rounded-lg border border-border object-cover' />
 								<button
+									type='button'
 									title='Eliminar imagen'
 									aria-label='Eliminar imagen'
 									onClick={() => removeImage(idx)}
