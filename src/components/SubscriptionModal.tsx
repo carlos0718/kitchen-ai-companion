@@ -303,7 +303,7 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className='sm:max-w-5xl max-h-[90vh] overflow-y-auto'>
+			<DialogContent className='w-[calc(100vw-2rem)] sm:max-w-5xl max-h-[85vh] overflow-y-auto'>
 				<DialogHeader>
 					<DialogTitle className='text-3xl font-serif bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent'>
 						Planes de Suscripción
@@ -678,7 +678,7 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 										<table className='w-full'>
 											<thead>
 												<tr className='border-b'>
-													<th className='text-left p-4 font-semibold'>Característica</th>
+													<th className='text-left p-4 font-semibold sticky left-0 bg-card z-10'>Característica</th>
 													<th className='text-center p-4 font-semibold'>Gratis</th>
 													<th className='text-center p-4 font-semibold bg-primary/5'>
 														<div className='flex items-center justify-center gap-2'>
@@ -698,7 +698,7 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 														transition={{delay: idx * 0.05}}
 														className='border-b hover:bg-accent/50 transition-colors'
 													>
-														<td className='p-4 font-medium'>{row.feature}</td>
+														<td className='p-4 font-medium sticky left-0 bg-card'>{row.feature}</td>
 														<td className='text-center p-4'>
 															{typeof row.free === 'boolean' ? (
 																row.free ? (
