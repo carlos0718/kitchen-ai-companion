@@ -1,13 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Bell, CheckCheck, TicketCheck, Lightbulb, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Bell, CheckCheck, TicketCheck, Lightbulb, Info, Megaphone, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-interface Notification {
+interface UserNotification {
   id: string;
   type: string;
   title: string;
@@ -16,7 +15,22 @@ interface Notification {
   read: boolean;
   action_url: string | null;
   created_at: string;
+  source: 'notification';
 }
+
+interface SystemAnnouncement {
+  id: string;
+  type: 'announcement';
+  title: string;
+  message: string;
+  severity: string;
+  read: boolean;
+  action_url: string | null;
+  created_at: string;
+  source: 'announcement';
+}
+
+type NotificationItem = UserNotification | SystemAnnouncement;
 
 const SEVERITY_COLORS: Record<string, string> = {
   success: 'text-green-600',
@@ -28,10 +42,13 @@ const SEVERITY_COLORS: Record<string, string> = {
 const TYPE_ICONS: Record<string, React.ElementType> = {
   support_update: TicketCheck,
   suggestion_update: Lightbulb,
+  subscription_update: CreditCard,
+  promo_applied: CreditCard,
+  announcement: Megaphone,
 };
 
 export function NotificationDropdown() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
@@ -39,23 +56,65 @@ export function NotificationDropdown() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const fetchNotifications = async (uid: string) => {
-    const { data } = await supabase
+  const fetchAll = async (uid: string) => {
+    // Fetch user notifications
+    const { data: userNotifs } = await supabase
       .from('user_notifications')
       .select('*')
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
       .limit(10);
-    setNotifications(data ?? []);
+
+    // Fetch unread system announcements (not dismissed by this user)
+    const { data: reads } = await supabase
+      .from('user_announcement_reads')
+      .select('announcement_id')
+      .eq('user_id', uid);
+
+    const readIds = new Set((reads ?? []).map((r: { announcement_id: string }) => r.announcement_id));
+
+    const { data: announcements } = await supabase
+      .from('system_announcements')
+      .select('*')
+      .eq('is_active', true)
+      .lte('published_at', new Date().toISOString())
+      .or('expires_at.is.null,expires_at.gt.' + new Date().toISOString())
+      .order('published_at', { ascending: false });
+
+    const unreadAnnouncements: SystemAnnouncement[] = (announcements ?? [])
+      .filter((a: { id: string }) => !readIds.has(a.id))
+      .map((a: { id: string; title: string; message: string; severity: string; action_url: string | null; published_at: string }) => ({
+        id: a.id,
+        type: 'announcement' as const,
+        title: a.title,
+        message: a.message,
+        severity: a.severity,
+        read: false,
+        action_url: a.action_url,
+        created_at: a.published_at,
+        source: 'announcement' as const,
+      }));
+
+    const userNotifsMapped: UserNotification[] = (userNotifs ?? []).map((n: { id: string; type: string; title: string; message: string; severity: string; read: boolean; action_url: string | null; created_at: string }) => ({
+      ...n,
+      source: 'notification' as const,
+    }));
+
+    // Merge and sort by date, limit to 10
+    const merged = [...unreadAnnouncements, ...userNotifsMapped]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 10);
+
+    setNotifications(merged);
   };
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return;
       setUserId(user.id);
-      fetchNotifications(user.id);
+      fetchAll(user.id);
 
-      // Real-time subscription
+      // Real-time on user_notifications inserts
       const channel = supabase
         .channel('user-notifications')
         .on(
@@ -66,7 +125,12 @@ export function NotificationDropdown() {
             table: 'user_notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          () => fetchNotifications(user.id)
+          () => fetchAll(user.id)
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'system_announcements' },
+          () => fetchAll(user.id)
         )
         .subscribe();
 
@@ -85,35 +149,61 @@ export function NotificationDropdown() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const markAsRead = async (notification: Notification) => {
-    if (!notification.read) {
-      await supabase
-        .from('user_notifications')
-        .update({ read: true })
-        .eq('id', notification.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
-      );
+  const markAsRead = async (item: NotificationItem) => {
+    if (item.source === 'announcement') {
+      if (!item.read && userId) {
+        await supabase.from('user_announcement_reads').insert({
+          user_id: userId,
+          announcement_id: item.id,
+        }).select();
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
+        );
+      }
+    } else {
+      if (!item.read) {
+        await supabase
+          .from('user_notifications')
+          .update({ read: true })
+          .eq('id', item.id);
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === item.id ? { ...n, read: true } : n))
+        );
+      }
     }
-    if (notification.action_url) {
-      navigate(notification.action_url);
+    if (item.action_url) {
+      navigate(item.action_url);
     }
     setOpen(false);
   };
 
   const markAllAsRead = async () => {
     if (!userId || unreadCount === 0) return;
+
+    // Mark all user notifications
     await supabase
       .from('user_notifications')
       .update({ read: true })
       .eq('user_id', userId)
       .eq('read', false);
+
+    // Mark all unread announcements
+    const unreadAnnouncements = notifications.filter(
+      (n) => n.source === 'announcement' && !n.read
+    );
+    if (unreadAnnouncements.length > 0) {
+      await supabase.from('user_announcement_reads').insert(
+        unreadAnnouncements.map((a) => ({ user_id: userId, announcement_id: a.id }))
+      );
+    }
+
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   };
 
   return (
     <div ref={ref} className="relative">
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         className="relative p-2 rounded-lg hover:bg-accent transition-colors"
         aria-label="Notificaciones"
@@ -133,6 +223,7 @@ export function NotificationDropdown() {
             <span className="text-sm font-semibold">Notificaciones</span>
             {unreadCount > 0 && (
               <button
+                type="button"
                 onClick={markAllAsRead}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
@@ -151,10 +242,12 @@ export function NotificationDropdown() {
               </div>
             ) : (
               notifications.map((n) => {
-                const Icon = TYPE_ICONS[n.type] ?? Info;
+                const iconType = n.source === 'announcement' ? 'announcement' : n.type;
+                const Icon = TYPE_ICONS[iconType] ?? Info;
                 return (
                   <button
-                    key={n.id}
+                    type="button"
+                    key={`${n.source}-${n.id}`}
                     onClick={() => markAsRead(n)}
                     className={cn(
                       'w-full text-left px-4 py-3 flex gap-3 hover:bg-accent/50 transition-colors border-b last:border-0',

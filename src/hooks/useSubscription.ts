@@ -149,7 +149,7 @@ export function useSubscription() {
     };
   }, [checkSubscription]);
 
-  const createCheckout = async (plan: 'weekly' | 'monthly', mercadoPagoEmail?: string) => {
+  const createCheckout = async (plan: 'weekly' | 'monthly', mercadoPagoEmail?: string, discountPercent?: number) => {
     try {
       // Detect user's country and appropriate payment gateway
       const detectionResponse = await supabase.functions.invoke('detect-country');
@@ -169,7 +169,7 @@ export function useSubscription() {
       if (gateway === 'mercadopago') {
         // Use Mercado Pago Subscriptions API (recurring payments)
         const response = await supabase.functions.invoke('mercadopago-create-subscription', {
-          body: { plan, mercadoPagoEmail },
+          body: { plan, mercadoPagoEmail, discountPercent },
         });
 
         if (response.error) {

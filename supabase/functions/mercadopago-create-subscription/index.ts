@@ -9,6 +9,7 @@ const corsHeaders = {
 interface CreateSubscriptionRequest {
   plan: "weekly" | "monthly";
   mercadoPagoEmail?: string;
+  discountPercent?: number; // 0-100, from a discount_percent promo code
 }
 
 serve(async (req: Request) => {
@@ -48,7 +49,7 @@ serve(async (req: Request) => {
     }
 
     // Parse request body
-    const { plan, mercadoPagoEmail }: CreateSubscriptionRequest = await req.json();
+    const { plan, mercadoPagoEmail, discountPercent }: CreateSubscriptionRequest = await req.json();
 
     if (!plan || (plan !== "weekly" && plan !== "monthly")) {
       throw new Error("Invalid plan. Must be 'weekly' or 'monthly'");
@@ -59,10 +60,13 @@ serve(async (req: Request) => {
       throw new Error("Se requiere el email de tu cuenta de MercadoPago");
     }
 
-    console.log("[MP-CREATE-SUBSCRIPTION] Creating subscription for user:", user.id, "plan:", plan, "mpEmail:", mercadoPagoEmail);
+    console.log("[MP-CREATE-SUBSCRIPTION] Creating subscription for user:", user.id, "plan:", plan, "mpEmail:", mercadoPagoEmail, "discountPercent:", discountPercent);
 
     // Fixed prices in ARS
-    const price = plan === "weekly" ? 7500 : 25000;
+    const basePrice = plan === "weekly" ? 7500 : 25000;
+    const price = discountPercent && discountPercent > 0
+      ? Math.round(basePrice * (1 - discountPercent / 100))
+      : basePrice;
     const frequency = plan === "weekly" ? 7 : 1;
     const frequencyType = plan === "weekly" ? "days" : "months";
 
@@ -72,10 +76,15 @@ serve(async (req: Request) => {
     const daysToAdd = plan === "weekly" ? 7 : 30;
     const periodEnd = new Date(now.getTime() + daysToAdd * 24 * 60 * 60 * 1000).toISOString();
 
-    // Create subscription WITHOUT plan association (uses user-provided MP email)
-    const subscription = {
-      payer_email: mercadoPagoEmail, // Use the email from user's MercadoPago account
-      reason: plan === "weekly" ? "Plan Semanal - Kitchen AI" : "Plan Mensual - Kitchen AI",
+    const planLabel = plan === "weekly" ? "Plan Semanal - Kitchen AI" : "Plan Mensual - Kitchen AI";
+    const reason = discountPercent && discountPercent > 0
+      ? `${planLabel} (${discountPercent}% OFF)`
+      : planLabel;
+
+    // Create subscription (uses user-provided MP email)
+    const subscription: Record<string, unknown> = {
+      payer_email: mercadoPagoEmail,
+      reason,
       auto_recurring: {
         frequency: frequency,
         frequency_type: frequencyType,
@@ -87,6 +96,7 @@ serve(async (req: Request) => {
     };
 
     console.log("[MP-CREATE-SUBSCRIPTION] Request body:", JSON.stringify(subscription));
+    console.log("[MP-CREATE-SUBSCRIPTION] Price:", price, "(base:", basePrice, discountPercent ? `discount: ${discountPercent}%` : "no discount", ")");
     console.log("[MP-CREATE-SUBSCRIPTION] Calling Mercado Pago Preapproval API...");
 
     // Call Mercado Pago API to create subscription
@@ -144,8 +154,10 @@ serve(async (req: Request) => {
         init_point: initPoint,
         plan: plan,
         amount: price,
+        original_amount: basePrice,
         currency: "ARS",
         frequency: `${frequency} ${frequencyType}`,
+        discount_percent: discountPercent ?? 0,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

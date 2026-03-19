@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export type AgentType = 'chef' | 'nutricionista' | 'compras' | 'planificador';
 export type ImageData = { base64: string; mimeType: string };
 
 export interface Message {
@@ -8,6 +9,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   imageUrls?: string[];
+  agentType?: AgentType;
 }
 
 interface UseChatOptions {
@@ -20,6 +22,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentAgentType, setCurrentAgentType] = useState<AgentType | null>(null);
 
   const uploadImage = useCallback(async (base64: string, mimeType: string): Promise<string | null> => {
     if (!userId) return null;
@@ -57,6 +60,9 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
   const sendMessage = useCallback(async (input: string, images?: ImageData[]) => {
     if (!input.trim() && (!images || images.length === 0)) return;
 
+    // Reset agent type for new message
+    setCurrentAgentType(null);
+
     // Upload all images in parallel
     const imageUrls: string[] = [];
     if (images?.length) {
@@ -78,6 +84,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
     await saveMessage('user', input, imageUrls.length > 0 ? imageUrls : undefined);
 
     let assistantContent = '';
+    let detectedAgentType: AgentType | null = null;
 
     const upsertAssistant = (chunk: string) => {
       assistantContent += chunk;
@@ -85,17 +92,28 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
         const last = prev[prev.length - 1];
         if (last?.role === 'assistant') {
           return prev.map((m, i) =>
-            i === prev.length - 1 ? { ...m, content: assistantContent } : m
+            i === prev.length - 1
+              ? { ...m, content: assistantContent, agentType: detectedAgentType ?? undefined }
+              : m
           );
         }
-        return [...prev, { id: crypto.randomUUID(), role: 'assistant', content: assistantContent }];
+        return [
+          ...prev,
+          {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: assistantContent,
+            agentType: detectedAgentType ?? undefined,
+          },
+        ];
       });
     };
 
     try {
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-cocina`;
+      // Use agent-coordinator as primary endpoint
+      const COORDINATOR_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/agent-coordinator`;
 
-      const resp = await fetch(CHAT_URL, {
+      const resp = await fetch(COORDINATOR_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -115,6 +133,13 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
       if (!resp.ok) {
         const errorData = await resp.json();
         throw new Error(errorData.error || 'Error en la solicitud');
+      }
+
+      // Read agent type from response header (available immediately)
+      const headerAgentType = resp.headers.get('X-Agent-Type') as AgentType | null;
+      if (headerAgentType) {
+        detectedAgentType = headerAgentType;
+        setCurrentAgentType(headerAgentType);
       }
 
       if (!resp.body) throw new Error('No response body');
@@ -143,6 +168,14 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
 
           try {
             const parsed = JSON.parse(jsonStr);
+
+            // First event may be agent metadata
+            if (parsed.agent_type && !detectedAgentType) {
+              detectedAgentType = parsed.agent_type as AgentType;
+              setCurrentAgentType(detectedAgentType);
+              continue;
+            }
+
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) upsertAssistant(content);
           } catch {
@@ -183,7 +216,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
           const parsed = JSON.parse(m.image_url);
           imageUrls = Array.isArray(parsed) ? parsed : [m.image_url];
         } catch {
-          imageUrls = [m.image_url]; // backwards compat with old single-url format
+          imageUrls = [m.image_url];
         }
       }
       return {
@@ -203,6 +236,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
     messages,
     isLoading,
     error,
+    currentAgentType,
     sendMessage,
     loadMessages,
     clearMessages,
