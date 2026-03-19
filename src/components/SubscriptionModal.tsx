@@ -11,12 +11,13 @@ import {Check, Crown, Sparkles, Loader2, X, TrendingDown, Star, CreditCard, MapP
 import {motion, AnimatePresence} from 'framer-motion';
 import {toast} from 'sonner';
 import {supabase} from '@/integrations/supabase/client';
+import {PromoCodeInput, ValidatedPromo} from '@/components/PromoCodeInput';
 
 interface SubscriptionModalProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	currentPlan: 'free' | 'weekly' | 'monthly';
-	onSubscribe: (plan: 'weekly' | 'monthly', mercadoPagoEmail?: string) => Promise<void>;
+	onSubscribe: (plan: 'weekly' | 'monthly', mercadoPagoEmail?: string, discountPercent?: number) => Promise<void>;
 	onManage: () => Promise<void>;
 }
 
@@ -126,6 +127,11 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 	const [selectedPlan, setSelectedPlan] = useState<'weekly' | 'monthly' | null>(null);
 	const [mercadoPagoEmail, setMercadoPagoEmail] = useState('');
 
+	// Promo code
+	const [validatedPromo, setValidatedPromo] = useState<ValidatedPromo | null>(null);
+	const [showPromoInput, setShowPromoInput] = useState(false);
+	const [applyingPromo, setApplyingPromo] = useState(false);
+
 	// Detect country and payment gateway when modal opens
 	useEffect(() => {
 		if (!open) return;
@@ -221,10 +227,12 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 
 		setLoading(selectedPlan);
 		try {
-			await onSubscribe(selectedPlan, mercadoPagoEmail);
+			const discountPercent = validatedPromo?.type === 'discount_percent' ? validatedPromo.value : undefined;
+			await onSubscribe(selectedPlan, mercadoPagoEmail, discountPercent);
 			setShowEmailStep(false);
 			setMercadoPagoEmail('');
 			setSelectedPlan(null);
+			setValidatedPromo(null);
 		} catch (error) {
 			toast.error('Error al procesar la suscripción', {
 				description: 'Por favor intenta nuevamente o contacta a soporte.'
@@ -238,6 +246,28 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 		setShowEmailStep(false);
 		setSelectedPlan(null);
 		setMercadoPagoEmail('');
+	};
+
+	const handleActivateFreeTrial = async () => {
+		if (!validatedPromo || validatedPromo.type !== 'free_trial') return;
+		setApplyingPromo(true);
+		try {
+			const {data, error} = await supabase.functions.invoke('apply-promo-code', {
+				body: {code: validatedPromo.code, plan: validatedPromo.applicable_plan ?? 'weekly'}
+			});
+			if (error || !data?.success) {
+				toast.error('Error al aplicar el cupón', {description: data?.error ?? 'Intentá de nuevo.'});
+				return;
+			}
+			toast.success(`¡${validatedPromo.value} días gratis activados!`, {
+				description: 'Tu suscripción Premium está activa. ¡Disfrutá todas las funcionalidades!'
+			});
+			onOpenChange(false);
+		} catch {
+			toast.error('Error al activar el cupón', {description: 'Por favor intentá de nuevo.'});
+		} finally {
+			setApplyingPromo(false);
+		}
 	};
 
 	const handleManage = async () => {
@@ -585,6 +615,55 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 									);
 								})}
 							</div>
+
+							{/* Promo code section */}
+							{currentPlan === 'free' && paymentAvailable && (
+								<div className='mt-6 border-t pt-5'>
+									{!showPromoInput ? (
+										<button
+											type='button'
+											onClick={() => setShowPromoInput(true)}
+											className='text-sm font-medium flex items-center gap-1.5 mx-auto hover:opacity-80 transition-opacity'
+										>
+											<Star className='h-3.5 w-3.5 text-emerald-700' />
+											<span className='bg-gradient-to-r from-emerald-700 to-purple-600 bg-clip-text text-transparent'>Tengo un cupón de descuento</span>
+										</button>
+									) : (
+										<div className='max-w-sm mx-auto space-y-2'>
+											<p className='text-sm font-medium text-start text-muted-foreground'>Ingresá tu cupón</p>
+											<PromoCodeInput
+												onValidated={(promo) => setValidatedPromo(promo)}
+												onCleared={() => setValidatedPromo(null)}
+											/>
+											{validatedPromo?.type === 'free_trial' && (
+												<motion.div
+													initial={{opacity: 0, y: 8}}
+													animate={{opacity: 1, y: 0}}
+													className='p-4 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg space-y-3'
+												>
+													<p className='text-sm font-semibold text-green-700 text-center'>
+														¡{validatedPromo.value} días gratis de Premium!
+													</p>
+													<Button
+														className='w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
+														onClick={handleActivateFreeTrial}
+														disabled={applyingPromo}
+													>
+														{applyingPromo ? (
+															<>
+																<Loader2 className='h-4 w-4 animate-spin mr-2' />
+																Activando...
+															</>
+														) : (
+															<>Activar {validatedPromo.value} días gratis</>
+														)}
+													</Button>
+												</motion.div>
+											)}
+										</div>
+									)}
+								</div>
+							)}
 						</TabsContent>
 
 						{/* Comparison Tab */}

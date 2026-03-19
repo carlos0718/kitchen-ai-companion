@@ -29,7 +29,7 @@ import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, Search, UserCog } from 'lucide-react';
+import { Loader2, Search, UserCog, KeyRound, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -42,6 +42,7 @@ interface UserRow {
   country: string | null;
   is_admin: boolean;
   created_at: string;
+  last_sign_in_at: string | null;
   subscription?: {
     plan: string;
     status: string;
@@ -77,6 +78,8 @@ export default function AdminUsers() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
+  const [resettingPassword, setResettingPassword] = useState(false);
+
   // Editable subscription fields
   const [editPlan, setEditPlan] = useState('free');
   const [editStatus, setEditStatus] = useState('inactive');
@@ -97,7 +100,7 @@ export default function AdminUsers() {
     const adminSet = new Set(adminRows?.map((a) => a.user_id) ?? []);
 
     setUsers(
-      (rpcUsers ?? []).map((u: { user_id: string; email: string; name: string | null; last_name: string | null; country: string | null; created_at: string }) => ({
+      (rpcUsers ?? []).map((u: { user_id: string; email: string; name: string | null; last_name: string | null; country: string | null; created_at: string; last_sign_in_at: string | null }) => ({
         ...u,
         is_admin: adminSet.has(u.user_id),
         subscription: subMap.get(u.user_id) ?? null,
@@ -159,6 +162,22 @@ export default function AdminUsers() {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!editingUser) return;
+    setResettingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(editingUser.email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast({ title: 'Email enviado', description: `Se envió el link de reseteo a ${editingUser.email}.` });
+    } catch {
+      toast({ title: 'Error', description: 'No se pudo enviar el email de reseteo.', variant: 'destructive' });
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const filtered = users.filter((u) => {
     const fullName = `${u.name ?? ''} ${u.last_name ?? ''}`.toLowerCase();
     const matchSearch =
@@ -208,7 +227,7 @@ export default function AdminUsers() {
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </div>
       ) : (
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -219,13 +238,14 @@ export default function AdminUsers() {
                 <TableHead>Plan</TableHead>
                 <TableHead>Suscripción</TableHead>
                 <TableHead>Admin</TableHead>
+                <TableHead>Último ingreso</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground py-10">
                     Sin resultados.
                   </TableCell>
                 </TableRow>
@@ -257,6 +277,14 @@ export default function AdminUsers() {
                           <Badge className="bg-purple-500/10 text-purple-700 border-purple-500/20" variant="outline">
                             Admin
                           </Badge>
+                        ) : '—'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {user.last_sign_in_at ? (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3 shrink-0" />
+                            {formatDistanceToNow(new Date(user.last_sign_in_at), { addSuffix: true, locale: es })}
+                          </span>
                         ) : '—'}
                       </TableCell>
                       <TableCell className="text-right">
@@ -313,6 +341,32 @@ export default function AdminUsers() {
                     <p className="text-sm font-medium">
                       {formatDistanceToNow(new Date(editingUser.created_at), { addSuffix: true, locale: es })}
                     </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Último ingreso</Label>
+                    <p className="text-sm font-medium flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      {editingUser.last_sign_in_at
+                        ? formatDistanceToNow(new Date(editingUser.last_sign_in_at), { addSuffix: true, locale: es })
+                        : 'Nunca'}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Resetear contraseña</Label>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleResetPassword}
+                      disabled={resettingPassword}
+                      className="w-full text-xs h-8"
+                    >
+                      {resettingPassword
+                        ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />Enviando...</>
+                        : <><KeyRound className="h-3.5 w-3.5 mr-1" />Enviar email</>
+                      }
+                    </Button>
                   </div>
                 </div>
                 <div className="space-y-1">

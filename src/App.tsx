@@ -17,6 +17,8 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminTickets from "./pages/admin/AdminTickets";
 import AdminSuggestions from "./pages/admin/AdminSuggestions";
+import AdminAnnouncements from "./pages/admin/AdminAnnouncements";
+import AdminPromoCodes from "./pages/admin/AdminPromoCodes";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AdminRoute } from "./components/AdminRoute";
 import { AppLayout } from "./components/AppLayout";
@@ -130,6 +132,26 @@ const App = () => (
               <AdminRoute>
                 <AdminLayout>
                   <AdminSuggestions />
+                </AdminLayout>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/announcements"
+            element={
+              <AdminRoute>
+                <AdminLayout>
+                  <AdminAnnouncements />
+                </AdminLayout>
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="/admin/promo-codes"
+            element={
+              <AdminRoute>
+                <AdminLayout>
+                  <AdminPromoCodes />
                 </AdminLayout>
               </AdminRoute>
             }

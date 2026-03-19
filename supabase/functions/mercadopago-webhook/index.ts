@@ -184,6 +184,8 @@ async function handleSubscriptionEvent(
     is_recurring: subscription.status !== "cancelled",
     payment_gateway: "mercadopago",
     updated_at: new Date().toISOString(),
+    // Reset so cron notifies again when the new period approaches expiry
+    ...(subscription.status === "authorized" ? { expiration_notified: false } : {}),
   };
 
   const { error: updateError } = await supabaseClient
@@ -219,10 +221,11 @@ async function handleSubscriptionEvent(
     .from("user_notifications")
     .insert({
       user_id: userId,
+      type: "subscription_update",
       title: notificationTitle,
       message: notificationMessage,
-      type: notificationType,
-      related_entity: "subscription",
+      severity: notificationType,
+      read: false,
       created_at: new Date().toISOString(),
     });
 
@@ -389,6 +392,7 @@ serve(async (req) => {
     // If approved, update subscription details
     if (payment.status === "approved") {
       updateData.subscribed = true;
+      updateData.expiration_notified = false; // Reset so cron notifies on next expiry period
       // Use metadata periods if available, otherwise use existing
       if (payment.metadata?.period_start) {
         updateData.current_period_start = payment.metadata.period_start;
@@ -437,10 +441,11 @@ serve(async (req) => {
       .from("user_notifications")
       .insert({
         user_id: userId,
+        type: "subscription_update",
         title: notificationTitle,
         message: notificationMessage,
-        type: notificationType,
-        related_entity: "subscription",
+        severity: notificationType,
+        read: false,
         created_at: new Date().toISOString(),
       });
 
