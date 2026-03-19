@@ -205,15 +205,9 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
 
   const onSubmit = async (data: FormData) => {
     try {
-      // Calculate age from birth date
-      const age = data.birth_date
-        ? Math.floor((Date.now() - new Date(data.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-        : null;
-
       await createProfile({
         user_id: user.id,
         ...data,
-        age,
         onboarding_completed: true,
       });
       onComplete();
