@@ -21,7 +21,7 @@ type FormData = {
   name: string;
   last_name: string;
   country: string;
-  birth_year: number | null;
+  birth_date: string;
   height: number | null;
   weight: number | null;
   gender: string;
@@ -143,7 +143,7 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
       name: '',
       last_name: '',
       country: '',
-      birth_year: null,
+      birth_date: '',
       height: null,
       weight: null,
       gender: '',
@@ -205,16 +205,14 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
 
   const onSubmit = async (data: FormData) => {
     try {
-      // Calculate age from birth year
-      const currentYear = new Date().getFullYear();
-      const age = data.birth_year ? currentYear - data.birth_year : null;
-
-      // Remove birth_year and add calculated age
-      const { birth_year, ...restData } = data;
+      // Calculate age from birth date
+      const age = data.birth_date
+        ? Math.floor((Date.now() - new Date(data.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+        : null;
 
       await createProfile({
         user_id: user.id,
-        ...restData,
+        ...data,
         age,
         onboarding_completed: true,
       });
@@ -330,14 +328,13 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="birth_year">Año de nacimiento</Label>
+                  <Label htmlFor="birth_date">Fecha de nacimiento</Label>
                   <Input
-                    id="birth_year"
-                    type="number"
-                    {...register('birth_year', { valueAsNumber: true })}
-                    placeholder="1990"
-                    min="1920"
-                    max={new Date().getFullYear()}
+                    id="birth_date"
+                    type="date"
+                    {...register('birth_date')}
+                    max={new Date().toISOString().split('T')[0]}
+                    min="1920-01-01"
                   />
                 </div>
               </div>
