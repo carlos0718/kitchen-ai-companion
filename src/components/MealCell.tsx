@@ -56,12 +56,12 @@ export function MealCell({
         </p>
       )}
 
-      {/* Actions (visible on hover) */}
-      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Actions (visible on hover or always on touch devices) */}
+      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity">
         {onViewDetails && (
           <Button
             variant="ghost" size="icon"
-            className="h-5 w-5"
+            className="h-6 w-6 md:h-5 md:w-5"
             onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
             title="Ver receta"
           >
@@ -71,7 +71,7 @@ export function MealCell({
         {onToggleCompleted && (
           <Button
             variant="ghost" size="icon"
-            className={cn('h-5 w-5', isCompleted && 'text-primary')}
+            className={cn('h-6 w-6 md:h-5 md:w-5', isCompleted && 'text-primary')}
             onClick={(e) => { e.stopPropagation(); onToggleCompleted(!isCompleted); }}
             title={isCompleted ? 'Marcar pendiente' : 'Marcar completado'}
           >
@@ -81,7 +81,7 @@ export function MealCell({
         {onReplace && (
           <Button
             variant="ghost" size="icon"
-            className="h-5 w-5"
+            className="h-6 w-6 md:h-5 md:w-5"
             onClick={(e) => { e.stopPropagation(); onReplace(); }}
             title="Reemplazar"
           >
@@ -94,7 +94,7 @@ export function MealCell({
       {onRemove && (
         <button
           onClick={(e) => { e.stopPropagation(); onRemove(); }}
-          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity rounded p-0.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100 transition-opacity rounded p-0.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
           title="Eliminar"
         >
           <X className="h-3 w-3" />

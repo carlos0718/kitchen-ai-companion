@@ -1,9 +1,11 @@
-import { ChefHat } from 'lucide-react';
+import { ChefHat, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useEffect } from 'react';
 
 export function LandingNavbar() {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -15,6 +17,7 @@ export function LandingNavbar() {
   }, []);
 
   const scrollToSection = (sectionId: string) => {
+    setMobileMenuOpen(false);
     const element = document.getElementById(sectionId);
     if (element) {
       const offset = 80; // Navbar height
@@ -81,11 +84,52 @@ export function LandingNavbar() {
             </Button>
           </div>
 
-          {/* CTA Button */}
+          {/* Mobile hamburger */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="md:hidden text-primary-foreground hover:bg-primary-foreground/10"
+                aria-label="Abrir menú"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-64 pt-12">
+              <nav className="flex flex-col gap-1">
+                {[
+                  { label: 'Inicio', id: 'hero' },
+                  { label: 'Características', id: 'features' },
+                  { label: 'FAQ', id: 'faq' },
+                  { label: 'Precios', id: 'pricing' },
+                ].map(({ label, id }) => (
+                  <Button
+                    key={id}
+                    variant="ghost"
+                    className="justify-start text-base h-11"
+                    onClick={() => scrollToSection(id)}
+                  >
+                    {label}
+                  </Button>
+                ))}
+                <div className="mt-4 pt-4 border-t">
+                  <Button
+                    className="w-full"
+                    onClick={() => scrollToSection('auth')}
+                  >
+                    Comenzar Gratis
+                  </Button>
+                </div>
+              </nav>
+            </SheetContent>
+          </Sheet>
+
+          {/* CTA Button — desktop only */}
           <Button
             onClick={() => scrollToSection('auth')}
             variant="secondary"
-            className="shadow-md hover:shadow-lg transition-shadow"
+            className="hidden md:flex shadow-md hover:shadow-lg transition-shadow"
           >
             Comenzar Gratis
           </Button>
