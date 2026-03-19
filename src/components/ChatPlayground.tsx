@@ -8,7 +8,8 @@ import { SubscriptionModal } from './SubscriptionModal';
 import { UsageBadge } from './UsageBadge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { ChefHat, Sparkles } from 'lucide-react';
+import { ChefHat, Sparkles, UtensilsCrossed, Activity, ShoppingCart, CalendarDays } from 'lucide-react';
+import type { AgentType } from '@/hooks/useChat';
 import { useToast } from '@/hooks/use-toast';
 import './ChatPlayground.css';
 
@@ -30,10 +31,17 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
     return localStorage.getItem(`chat_conversation_${userId}`) || null;
   });
   const [showSubscription, setShowSubscription] = useState(false);
-  const { messages, isLoading, error, sendMessage, loadMessages, clearMessages } = useChat({
+  const { messages, isLoading, error, currentAgentType, sendMessage, loadMessages, clearMessages } = useChat({
     conversationId: currentConversationId || undefined,
     userId: userId,
   });
+
+  const AGENT_BADGE: Record<AgentType, { label: string; color: string; icon: React.ElementType }> = {
+    chef:          { label: 'Chef',          color: 'bg-orange-100 text-orange-700 border-orange-200', icon: UtensilsCrossed },
+    nutricionista: { label: 'Nutricionista', color: 'bg-green-100 text-green-700 border-green-200',   icon: Activity },
+    compras:       { label: 'Compras',       color: 'bg-blue-100 text-blue-700 border-blue-200',      icon: ShoppingCart },
+    planificador:  { label: 'Planificador',  color: 'bg-purple-100 text-purple-700 border-purple-200', icon: CalendarDays },
+  };
   const { plan, subscribed, createCheckout, openCustomerPortal, checkSubscription } = useSubscription();
   const { remaining, weeklyLimit, canQuery, incrementUsage, checkUsage } = useUsage();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -174,7 +182,19 @@ export function ChatPlayground({ userId }: ChatPlaygroundProps) {
               <ChefHat className="h-5 w-5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="font-serif text-xl font-semibold">Chef AI</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="font-serif text-xl font-semibold">Chef AI</h1>
+                {currentAgentType && AGENT_BADGE[currentAgentType] && (() => {
+                  const badge = AGENT_BADGE[currentAgentType];
+                  const Icon = badge.icon;
+                  return (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border transition-all ${badge.color}`}>
+                      <Icon className="h-3 w-3" />
+                      {badge.label}
+                    </span>
+                  );
+                })()}
+              </div>
               <p className="text-xs text-muted-foreground">Tu asistente de cocina casera</p>
             </div>
           </div>
