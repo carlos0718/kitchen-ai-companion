@@ -1,4 +1,4 @@
-import { Brain, Calendar, Apple, Users, BookOpen, Settings } from 'lucide-react';
+import { Brain, Calendar, Apple, Users, BookOpen, Settings, ShoppingCart, BarChart2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const features = [
@@ -38,6 +38,20 @@ const features = [
     description:
       'Elige entre modo estricto o flexible. Reemplaza cualquier comida con alternativas generadas por IA instantáneamente.',
   },
+  {
+    icon: ShoppingCart,
+    title: 'Lista de Compras Inteligente',
+    description:
+      'Genera automáticamente la lista de compras de tu semana, organizada por categorías. Sin olvidar nada y con nombres de ingredientes locales.',
+    badge: 'Premium',
+  },
+  {
+    icon: BarChart2,
+    title: 'Resumen Semanal',
+    description:
+      'Cada semana recibís un resumen nutricional personalizado: calorías promedio, macros y motivación para seguir avanzando hacia tus objetivos.',
+    badge: 'Premium',
+  },
 ];
 
 export function FeaturesSection() {
@@ -61,8 +75,13 @@ export function FeaturesSection() {
             return (
               <Card
                 key={index}
-                className="border border-border bg-card hover:bg-accent/5 transition-all duration-300 hover:shadow-lg group"
+                className="border border-border bg-card hover:bg-accent/5 transition-all duration-300 hover:shadow-lg group relative"
               >
+                {feature.badge && (
+                  <span className="absolute top-4 right-4 text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {feature.badge}
+                  </span>
+                )}
                 <CardContent className="p-6 space-y-4">
                   {/* Icon */}
                   <div className="inline-flex items-center justify-center w-12 h-12 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors">
