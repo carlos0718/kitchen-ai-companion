@@ -22,9 +22,13 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
+      // Signal other tabs that this SIGNED_IN event comes from admin — they should ignore it
+      localStorage.setItem('__kitchen_admin_login', '1');
+
       // 1. Authenticate via Supabase
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError || !data.user) {
+        localStorage.removeItem('__kitchen_admin_login');
         setError('Credenciales incorrectas.');
         return;
       }
