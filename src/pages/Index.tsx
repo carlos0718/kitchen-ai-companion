@@ -41,12 +41,6 @@ const Index = () => {
             setLoading(false);
           }
         } else {
-          // If any auth event came from admin login in another tab, ignore it
-          if (localStorage.getItem('__kitchen_admin_login')) {
-            localStorage.removeItem('__kitchen_admin_login');
-            setLoading(false);
-            return;
-          }
           // Normal tab behavior - update user state
           setUser(session?.user ?? null);
           setLoading(false);
@@ -87,17 +81,7 @@ const Index = () => {
           .single();
 
         if (error && error.code === 'PGRST116') {
-          // Profile doesn't exist — check if this is an admin user before showing onboarding
-          const { data: adminRow } = await supabase
-            .from('admin_users')
-            .select('user_id')
-            .eq('user_id', user.id)
-            .maybeSingle();
-          if (adminRow) {
-            // Admin user has no regular profile — redirect them to admin panel, never onboarding
-            navigate('/admin');
-            return;
-          }
+          // Profile doesn't exist
           setShowOnboarding(true);
         } else if (profile && !profile.onboarding_completed) {
           // Profile exists but onboarding not completed
