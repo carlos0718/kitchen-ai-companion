@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { adminSupabase as supabase } from '@/integrations/supabase/admin-client';
 import { setAdminSession } from '@/lib/adminAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,13 +22,9 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      // Signal other tabs that this SIGNED_IN event comes from admin — they should ignore it
-      localStorage.setItem('__kitchen_admin_login', '1');
-
-      // 1. Authenticate via Supabase
+      // 1. Authenticate via Supabase (uses isolated admin client — won't affect main app session)
       const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
       if (authError || !data.user) {
-        localStorage.removeItem('__kitchen_admin_login');
         setError('Credenciales incorrectas.');
         return;
       }

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { adminSupabase as supabase } from '@/integrations/supabase/admin-client';
 import { clearAdminSession } from '@/lib/adminAuth';
 import {
   LayoutDashboard,
