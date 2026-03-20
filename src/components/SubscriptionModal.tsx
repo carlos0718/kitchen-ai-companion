@@ -616,8 +616,8 @@ export function SubscriptionModal({open, onOpenChange, currentPlan, onSubscribe,
 								})}
 							</div>
 
-							{/* Promo code section */}
-							{currentPlan === 'free' && paymentAvailable && (
+							{/* Promo code section — visible for all countries since free trials don't require payment */}
+							{currentPlan === 'free' && (
 								<div className='mt-6 border-t pt-5'>
 									{!showPromoInput ? (
 										<button

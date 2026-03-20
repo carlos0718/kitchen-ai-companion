@@ -8,7 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChefHat, Loader2 } from 'lucide-react';
+import { ChefHat, Loader2, CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { useProfile } from '@/hooks/useProfile';
 import { cn } from '@/lib/utils';
 
@@ -322,14 +326,35 @@ export function OnboardingWizard({ user, onComplete }: OnboardingWizardProps) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="birth_date">Fecha de nacimiento</Label>
-                  <Input
-                    id="birth_date"
-                    type="date"
-                    {...register('birth_date')}
-                    max={new Date().toISOString().split('T')[0]}
-                    min="1920-01-01"
-                  />
+                  <Label>Fecha de nacimiento</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !watch('birth_date') && 'text-muted-foreground'
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {watch('birth_date')
+                          ? format(new Date(watch('birth_date') + 'T00:00:00'), "d 'de' MMMM 'de' yyyy", { locale: es })
+                          : 'Seleccioná tu fecha de nacimiento'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={watch('birth_date') ? new Date(watch('birth_date') + 'T00:00:00') : undefined}
+                        onSelect={(date) => setValue('birth_date', date ? format(date, 'yyyy-MM-dd') : '')}
+                        defaultMonth={watch('birth_date') ? new Date(watch('birth_date') + 'T00:00:00') : new Date(1990, 0)}
+                        fromYear={1920}
+                        toDate={new Date()}
+                        captionLayout="dropdown-buttons"
+                        disabled={(date) => date > new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
             </div>

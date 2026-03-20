@@ -274,6 +274,17 @@ export function NotificationDropdown() {
               })
             )}
           </div>
+
+          {/* Footer */}
+          <div className="border-t px-4 py-2.5">
+            <button
+              type="button"
+              onClick={() => { navigate('/notifications'); setOpen(false); }}
+              className="w-full text-center text-xs text-primary hover:underline font-medium"
+            >
+              Ver todas las notificaciones
+            </button>
+          </div>
         </div>
       )}
     </div>
