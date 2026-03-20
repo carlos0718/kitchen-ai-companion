@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { X, Calendar, BookOpen, User, LogOut, MessageSquare, ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
+import { X, Calendar, BookOpen, User, LogOut, MessageSquare, ChevronDown, ChevronRight, HelpCircle, Bell } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/chat', label: 'Chat', icon: MessageSquare },
   { path: '/planner', label: 'Planificador', icon: Calendar },
   { path: '/diet-guide', label: 'Guía de Dietas', icon: BookOpen },
+  { path: '/notifications', label: 'Notificaciones', icon: Bell },
   { path: '/help', label: 'Ayuda', icon: HelpCircle },
 ];
 

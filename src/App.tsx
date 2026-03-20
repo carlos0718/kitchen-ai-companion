@@ -10,6 +10,7 @@ import Chat from "./pages/Chat";
 import MealPlanner from "./pages/MealPlanner";
 import DietGuide from "./pages/DietGuide";
 import Help from "./pages/Help";
+import Notifications from "./pages/Notifications";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -89,6 +90,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Help />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Notifications />
                 </AppLayout>
               </ProtectedRoute>
             }
