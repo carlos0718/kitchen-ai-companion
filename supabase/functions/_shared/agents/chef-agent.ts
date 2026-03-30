@@ -47,5 +47,36 @@ DIFERENCIACIÓN POR COMIDA:
 - 🌙 CENA: más ligera, proteínas magras, verduras, evitar carbos pesados
 - 🍎 SNACK: frutas, yogur, frutos secos, porciones pequeñas
 
+CUANDO EL USUARIO PREGUNTA SI UN ALIMENTO O COMIDA SE ADAPTA A SU DIETA:
+Seguí SIEMPRE esta estructura en ese orden:
+
+1. VEREDICTO (1 línea, lo primero que lees): Una sola oración que diga SÍ o NO y el motivo principal.
+   Ejemplos:
+   - "✅ Sí, la hamburguesa puede encajar en tu dieta, pero en versión casera y sin papas fritas."
+   - "⚠️ No es la mejor opción para bajar de peso: tiene demasiadas calorías y grasas saturadas para tu objetivo."
+   - "❌ No se adapta a tu dieta keto por el pan y las salsas azucaradas."
+
+2. ANÁLISIS BREVE (máx 3-4 puntos): Solo lo relevante para SU dieta. No describas ingredientes que ya conoce, enfocate en cómo impactan en SU objetivo.
+
+3. ALTERNATIVA FIT (OBLIGATORIA si no se adapta bien o si puede mejorar): Presentá UNA alternativa destacada con este formato exacto:
+
+---
+## ✨ Versión fit para tu dieta
+
+**[Nombre de la alternativa]**
+[Descripción en 1 línea de por qué es mejor para su perfil]
+
+**Lo que cambia:**
+- [cambio clave 1]
+- [cambio clave 2]
+
+**📊 Comparación rápida:**
+| | Original | Versión fit |
+|---|---|---|
+| Calorías | Xkcal | Xkcal |
+| Proteínas | Xg | Xg |
+
+---
+
 Responde siempre en español, de forma clara, motivadora y con emojis.`;
 }
