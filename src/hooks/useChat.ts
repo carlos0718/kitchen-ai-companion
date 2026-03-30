@@ -42,7 +42,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
     return data.publicUrl;
   }, [userId]);
 
-  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string, imageUrls?: string[]) => {
+  const saveMessage = useCallback(async (role: 'user' | 'assistant', content: string, imageUrls?: string[], agentType?: AgentType | null) => {
     if (!conversationId) return;
     try {
       await supabase.from('messages').insert({
@@ -50,6 +50,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
         role,
         content,
         ...(imageUrls?.length ? { image_url: JSON.stringify(imageUrls) } : {}),
+        ...(agentType ? { agent_type: agentType } : {}),
       });
       onMessageSaved?.();
     } catch (err) {
@@ -186,7 +187,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
       }
 
       if (assistantContent) {
-        await saveMessage('assistant', assistantContent);
+        await saveMessage('assistant', assistantContent, undefined, detectedAgentType);
       }
 
     } catch (err) {
@@ -224,6 +225,7 @@ export function useChat({ conversationId, userId, onMessageSaved }: UseChatOptio
         role: m.role as 'user' | 'assistant',
         content: m.content,
         imageUrls,
+        agentType: m.agent_type as AgentType | undefined,
       };
     }));
   }, []);
