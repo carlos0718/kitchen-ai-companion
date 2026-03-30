@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils';
 import { ChefHat, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatMessageProps {
   role: 'user' | 'assistant';
@@ -12,7 +13,7 @@ export function ChatMessage({ role, content, imageUrls }: ChatMessageProps) {
   const isAssistant = role === 'assistant';
 
   return (
-    <div className={cn('flex gap-3', isAssistant ? 'items-start' : 'items-start flex-row-reverse')}>
+    <div className={cn('flex gap-3 animate-fade-in', isAssistant ? 'items-start' : 'items-start flex-row-reverse')}>
       {/* Avatar */}
       <div
         className={cn(
@@ -58,6 +59,7 @@ export function ChatMessage({ role, content, imageUrls }: ChatMessageProps) {
             isAssistant ? (
               <div className="text-foreground font-serif">
                 <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
                   components={{
                     h1: ({ children }) => (
                       <h2 className="text-xl font-bold mt-5 mb-2 text-foreground tracking-tight font-sans border-b border-border/40 pb-1">
@@ -93,6 +95,41 @@ export function ChatMessage({ role, content, imageUrls }: ChatMessageProps) {
                       <blockquote className="border-l-2 border-primary/40 pl-3 my-2 text-muted-foreground italic">
                         {children}
                       </blockquote>
+                    ),
+                    hr: () => (
+                      <hr className="my-3 border-border/40" />
+                    ),
+                    table: ({ children }) => (
+                      <div className="my-3 w-full overflow-x-auto rounded-lg border border-border/50">
+                        <table className="w-full text-sm border-collapse">
+                          {children}
+                        </table>
+                      </div>
+                    ),
+                    thead: ({ children }) => (
+                      <thead className="bg-muted/60 font-sans">
+                        {children}
+                      </thead>
+                    ),
+                    tbody: ({ children }) => (
+                      <tbody className="divide-y divide-border/30">
+                        {children}
+                      </tbody>
+                    ),
+                    tr: ({ children }) => (
+                      <tr className="transition-colors hover:bg-muted/30">
+                        {children}
+                      </tr>
+                    ),
+                    th: ({ children }) => (
+                      <th className="px-3 py-2 text-left font-semibold text-foreground font-sans text-xs uppercase tracking-wide">
+                        {children}
+                      </th>
+                    ),
+                    td: ({ children }) => (
+                      <td className="px-3 py-2 text-[14px] text-foreground/90 leading-snug">
+                        {children}
+                      </td>
                     ),
                   }}
                 >
