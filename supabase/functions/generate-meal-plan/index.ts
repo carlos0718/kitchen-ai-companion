@@ -251,7 +251,14 @@ ${allPreviousMeals.join('\n')}
 NO uses nombres de otros países. Ejemplos: ${userCountry === 'AR' || userCountry === 'CL' ? '"palta" no "aguacate", "choclo" no "elote", "frutilla" no "fresa"' : userCountry === 'ES' ? '"patata" no "papa", "melocotón" no "durazno", "nata" no "crema de leche"' : userCountry === 'MX' ? '"aguacate" no "palta", "elote" no "choclo", "fresa" no "frutilla"' : '"aguacate" no "palta", "piña" no "ananá"'}
 ${INGREDIENT_LOCALIZATION_GUIDE}`;
 
-  return `Genera una receta para ${getMealTypeLabel(mealType)} que cumpla con los siguientes requisitos:
+  return `PROCESO MENTAL ANTES DE GENERAR (no lo escribas en el JSON, solo hazlo internamente):
+1. Verificar restricciones y alergias del usuario → excluir ingredientes incompatibles
+2. Confirmar que los macros target (proteína/carbos/grasas) son alcanzables con ingredientes reales
+3. Revisar comidas anteriores listadas → elegir proteína principal y carbohidrato base DIFERENTES
+4. Verificar que los nombres de ingredientes sean los correctos para ${countryName}
+5. Generar el JSON completo con TODOS los campos — sin omitir ninguno
+
+Genera una receta para ${getMealTypeLabel(mealType)} que cumpla con los siguientes requisitos:
 
 ⚠️ REGLAS PARA EL NOMBRE DE LA RECETA:
 - Debe ser CORTO (máximo 4-5 palabras), simple y descriptivo
@@ -570,8 +577,50 @@ serve(async (req) => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: `Eres un chef experto. Responde SOLO con JSON válido.\n\n${prompt}` }] }],
-            generationConfig: { temperature: 0.8, maxOutputTokens: 2000 },
+            contents: [{
+              parts: [{ text: `Eres un chef experto y nutricionista. Tu ÚNICA función es responder con un JSON válido que representa una receta.
+
+EJEMPLO DE RESPUESTA CORRECTA (usa este formato exacto, sin texto adicional):
+{
+  "name": "Avena con Banana y Miel",
+  "description": "Desayuno nutritivo y energético, ideal para comenzar el día con energía sostenida",
+  "cuisine_type": "Internacional",
+  "difficulty": "fácil",
+  "prep_time": 5,
+  "cook_time": 10,
+  "servings": 1,
+  "ingredients": [
+    {"name": "Avena arrollada", "amount": 60, "unit": "g"},
+    {"name": "Leche descremada", "amount": 200, "unit": "ml"},
+    {"name": "Banana", "amount": 1, "unit": "unidad"},
+    {"name": "Miel", "amount": 10, "unit": "g"}
+  ],
+  "instructions": [
+    {"step": 1, "description": "Hervir la leche en una cacerola a fuego medio."},
+    {"step": 2, "description": "Agregar la avena y cocinar 5 minutos revolviendo constantemente."},
+    {"step": 3, "description": "Servir en un bowl con la banana cortada en rodajas y la miel por encima."}
+  ],
+  "nutrition": {
+    "calories": 380,
+    "protein": 14,
+    "carbs": 65,
+    "fat": 6,
+    "fiber": 5
+  },
+  "tags": ["desayuno", "saludable", "rápido"]
+}
+
+REGLAS ABSOLUTAS:
+- Responde SOLO con el JSON, sin texto adicional antes ni después
+- Sin bloques de código markdown (no uses \`\`\`json)
+- Todos los campos son OBLIGATORIOS
+- Los valores numéricos deben ser números, no strings
+- El JSON debe ser parseable directamente
+
+SOLICITUD:
+${prompt}` }]
+            }],
+            generationConfig: { temperature: 0.35, maxOutputTokens: 2000, topP: 0.8 },
           }),
         }
       );
@@ -712,8 +761,50 @@ serve(async (req) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: `Eres un chef experto. Responde SOLO con JSON válido.\n\n${prompt}` }] }],
-              generationConfig: { temperature: 0.8, maxOutputTokens: 2000 },
+              contents: [{
+                parts: [{ text: `Eres un chef experto y nutricionista. Tu ÚNICA función es responder con un JSON válido que representa una receta.
+
+EJEMPLO DE RESPUESTA CORRECTA (usa este formato exacto, sin texto adicional):
+{
+  "name": "Avena con Banana y Miel",
+  "description": "Desayuno nutritivo y energético, ideal para comenzar el día con energía sostenida",
+  "cuisine_type": "Internacional",
+  "difficulty": "fácil",
+  "prep_time": 5,
+  "cook_time": 10,
+  "servings": 1,
+  "ingredients": [
+    {"name": "Avena arrollada", "amount": 60, "unit": "g"},
+    {"name": "Leche descremada", "amount": 200, "unit": "ml"},
+    {"name": "Banana", "amount": 1, "unit": "unidad"},
+    {"name": "Miel", "amount": 10, "unit": "g"}
+  ],
+  "instructions": [
+    {"step": 1, "description": "Hervir la leche en una cacerola a fuego medio."},
+    {"step": 2, "description": "Agregar la avena y cocinar 5 minutos revolviendo constantemente."},
+    {"step": 3, "description": "Servir en un bowl con la banana cortada en rodajas y la miel por encima."}
+  ],
+  "nutrition": {
+    "calories": 380,
+    "protein": 14,
+    "carbs": 65,
+    "fat": 6,
+    "fiber": 5
+  },
+  "tags": ["desayuno", "saludable", "rápido"]
+}
+
+REGLAS ABSOLUTAS:
+- Responde SOLO con el JSON, sin texto adicional antes ni después
+- Sin bloques de código markdown (no uses \`\`\`json)
+- Todos los campos son OBLIGATORIOS
+- Los valores numéricos deben ser números, no strings
+- El JSON debe ser parseable directamente
+
+SOLICITUD:
+${prompt}` }]
+              }],
+              generationConfig: { temperature: 0.35, maxOutputTokens: 2000, topP: 0.8 },
             }),
           }
         );

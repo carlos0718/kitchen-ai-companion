@@ -66,4 +66,6 @@ export interface GeminiPart {
 export interface GenerationConfig {
   temperature?: number;
   maxOutputTokens?: number;
+  topP?: number;
+  topK?: number;
 }

@@ -4,6 +4,8 @@ import type { AgentType } from "../types.ts";
 
 export class ComprasAgent extends BaseAgent {
   readonly type: AgentType = "compras";
+  readonly temperature = 0.7;
+  readonly topP = 0.88;
 
   readonly baseSystemPrompt = `Eres Chef AI, un **experto en compras inteligentes y sustituciones culinarias** con profundo conocimiento de ingredientes de toda Latinoamérica y España.
 

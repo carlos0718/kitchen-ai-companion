@@ -290,6 +290,7 @@ export abstract class BaseAgent {
   abstract readonly baseSystemPrompt: string;
   abstract readonly agentSuffix: string;
   readonly temperature: number = 0.8;
+  readonly topP?: number;
 
   buildSystemPrompt(profile: UserProfile | null): string {
     const userCtx = profile ? buildUserContext(profile) : "";
@@ -340,6 +341,10 @@ export abstract class BaseAgent {
 
   async handle(ctx: AgentContext): Promise<ReadableStream<Uint8Array>> {
     const contents = this.buildGeminiContents(ctx);
-    return callGeminiStream(contents, { temperature: this.temperature, maxOutputTokens: 2048 });
+    return callGeminiStream(contents, {
+      temperature: this.temperature,
+      maxOutputTokens: 2048,
+      topP: this.topP,
+    });
   }
 }

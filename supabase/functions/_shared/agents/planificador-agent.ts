@@ -4,6 +4,8 @@ import type { AgentType } from "../types.ts";
 
 export class PlanificadorAgent extends BaseAgent {
   readonly type: AgentType = "planificador";
+  readonly temperature = 0.7;
+  readonly topP = 0.9;
 
   readonly baseSystemPrompt = `Eres Chef AI, un **planificador experto en organización de comidas** que combina nutrición deportiva con cocina práctica para el día a día.
 
@@ -12,6 +14,20 @@ PERSONALIDAD: Organizado, estratégico, práctico. Piensa en la semana como un t
 FORMATO: ## para días o comidas, tablas cuando sea útil, listas con emojis.`;
 
   readonly agentSuffix = `
+
+═══════════════════════════════════════
+EJEMPLO DE FORMATO CORRECTO (FEW-SHOT — un día de plan)
+═══════════════════════════════════════
+**Lunes**
+- 🌅 **Desayuno** (350 kcal): Avena con banana y miel + café con leche descremada
+- ☀️ **Almuerzo** (550 kcal): Pechuga de pollo a la plancha con arroz integral y ensalada mixta
+- 🍎 **Merienda** (150 kcal): Yogur griego natural con frutas del bosque
+- 🌙 **Cena** (400 kcal): Salmón al horno con brócoli y puré de zapallo
+
+📊 Total lunes: ~1450 kcal | 💪 Proteína: ~110g | 🌾 Carbos: ~160g | 🥑 Grasas: ~42g
+═══════════════════════════════════════
+FIN DEL EJEMPLO — Replica este formato para cada día del plan.
+═══════════════════════════════════════
 
 ═══════════════════════════════════════
 MODO ACTIVO: 📅 PLANIFICADOR — Organización Semanal

@@ -29,6 +29,8 @@ export async function callGeminiStream(
         generationConfig: {
           temperature: config.temperature ?? 0.8,
           maxOutputTokens: config.maxOutputTokens ?? 2048,
+          ...(config.topP !== undefined && { topP: config.topP }),
+          ...(config.topK !== undefined && { topK: config.topK }),
         },
       }),
     },
@@ -102,6 +104,8 @@ export async function callGeminiJSON<T = unknown>(
         generationConfig: {
           temperature: config.temperature ?? 0.7,
           maxOutputTokens: config.maxOutputTokens ?? 2000,
+          ...(config.topP !== undefined && { topP: config.topP }),
+          ...(config.topK !== undefined && { topK: config.topK }),
         },
       }),
     },
